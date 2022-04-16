@@ -4,9 +4,12 @@ import Browser
 import Html exposing (Html)
 
 import Element exposing (layout, text)
-import Svg exposing (circle, svg)
-import Svg.Attributes exposing (width, height, cx, cy, r, viewBox)
-import String exposing (fromInt)
+import Svg exposing (Svg, svg, circle, ellipse, rect)
+import Svg.Attributes exposing  ( width, height, cx, cy, r
+                                , rx, ry, viewBox, color, fill
+                                , enableBackground
+                                )
+import String exposing (fromInt, fromFloat)
 
 
 main = Browser.sandbox { init = init, update = update, view = view }
@@ -16,17 +19,17 @@ main = Browser.sandbox { init = init, update = update, view = view }
 
 
 type alias Model =
-    { x : Int
-    , y : Int
-    , r : Int
+    { x : Float
+    , y : Float
+    , r : Float
     }
 
 
 init : Model
 init =
-    { x = 50
-    , y = 50
-    , r = 10
+    { x = 150
+    , y = 150
+    , r = 100
     }
 
 
@@ -47,20 +50,72 @@ update _ model = model
 
 view : Model -> Html Msg
 view model =
+    let
+        initialSeg =
+            { rx = model.r
+            , ry = model.r
+            , dy = 0.0
+            , red = 255.0
+            , green = 255.0
+            , blue = 255.0
+            }
+    in
     svg
-        [ width "120"
-        , height "120"
-        , viewBox "0 0 120 120"
+        [ width "520"
+        , height "520"
+        , viewBox "0 0 520 520"
+        , fill "rgb(51,51,51)"
+        , enableBackground "1"
         ]
-        [ circle
-            [ cx <| fromInt model.x
-            , cy <| fromInt model.y
-            , r <| fromInt model.r
-            ]
-            []
+        <| [rect [cx "260", cy "260", width "520", height "520"] []]
+        ++ List.reverse (List.map (viewSegment model.x model.y)
+        ([initialSeg] ++ makeTailSegments 5 initialSeg))
+
+
+type alias Segment =
+    { rx : Float
+    , ry : Float
+    , dy : Float
+    , red : Float
+    , green : Float
+    , blue : Float
+    }
+
+
+makeTailSegments : Int -> Segment -> List Segment
+makeTailSegments n seg =
+    if n <= 0 then
+        []
+    else
+        let 
+            xDecay = 0.6
+            yDecay = 0.8
+            cDecay = 0.8
+            newSeg = 
+                { rx = seg.rx * xDecay
+                , ry = seg.ry * yDecay
+                , dy = seg.dy + seg.ry * ( 1.0 + 0.2 * yDecay )
+                , red = seg.red * cDecay
+                , green = seg.green * cDecay
+                , blue = seg.blue * cDecay
+                }
+        in
+            [newSeg] ++ makeTailSegments (n-1) newSeg
+
+
+viewSegment : Float -> Float -> Segment -> Svg Msg
+viewSegment x y seg =
+    ellipse
+        [ cx <| fromFloat x
+        , cy <| fromFloat (y + seg.dy)
+        , rx <| fromFloat seg.rx
+        , ry <| fromFloat seg.ry
+        , fill <| segmentColor seg
+        -- , fill <| fromFloat seg.red ++ " " ++ fromFloat seg.green ++ " " ++ fromFloat seg.blue
         ]
-        
-    -- layout
-    --     []
-    --     <| text "rocket"
-        
+        []
+
+
+segmentColor : Segment -> String
+segmentColor seg =
+    "rgb(" ++ fromFloat seg.red ++ "," ++ fromFloat seg.green ++ "," ++ fromFloat seg.blue ++ ")"

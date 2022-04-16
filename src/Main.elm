@@ -106,7 +106,7 @@ defaultParams : Params
 defaultParams =
     { trialDelayMin = 150
     , trialDelayMax = 1000
-    , cueDuration = 35
+    , cueDuration = 350
     , targetDuration = 150
     , nTrials = 80
     , stepY = 0.1

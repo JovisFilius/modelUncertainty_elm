@@ -46,6 +46,7 @@ type alias Model =
     { params : Params
     , results : List Trial
     , currentTrial : Maybe Trial
+    , status : Status
     , distModel : DistModel
     , rocketY : Maybe Float
     , debugStr : String
@@ -65,6 +66,25 @@ type alias Params =
     , rocketSize : Float
     , targetSize : Float
     , cueWidth : Float
+    , startY : Float
+    , targetY : Float
+    }
+
+
+defaultParams : Params
+defaultParams =
+    { trialDelayMin = 150
+    , trialDelayMax = 1000
+    , cueDuration = 350
+    , targetDuration = 150
+    , nTrials = 80
+    , stepY = 0.1
+    , stepT = 1
+    , rocketSize = 0.0075
+    , targetSize = 0.0075
+    , cueWidth = 0.0375
+    , startY = 0.25
+    , targetY = 0.75
     }
 
 
@@ -84,6 +104,12 @@ type Profile
     | Quadratic
 
 
+type Status
+    = Launching
+    | Launchable
+    | Idle
+
+
 type alias DistModel = Random.Generator Profile
 
 
@@ -91,6 +117,7 @@ init : () -> (Model, Cmd Msg)
 init _ =
     ( { params = defaultParams
       , results = []
+      , status = Idle
       , currentTrial = Nothing
       , distModel = Random.weighted (100, Constant) []
       , rocketY = Nothing
@@ -100,21 +127,6 @@ init _ =
       }
     , Random.generate NewTrial (Random.float 0 1)
     )
-
-
-defaultParams : Params
-defaultParams =
-    { trialDelayMin = 150
-    , trialDelayMax = 1000
-    , cueDuration = 350
-    , targetDuration = 150
-    , nTrials = 80
-    , stepY = 0.1
-    , stepT = 1
-    , rocketSize = 0.0075
-    , targetSize = 0.0075
-    , cueWidth = 0.0375
-    }
 
 
 -- UPDATE

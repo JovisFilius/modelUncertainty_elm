@@ -4369,7 +4369,7 @@ function _Browser_load(url)
 		}
 	}));
 }
-var $author$project$Rocket$init = {r: 10, x: 50, y: 50};
+var $author$project$Rocket$init = {r: 10, x: 150, y: 150};
 var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
@@ -5184,39 +5184,100 @@ var $author$project$Rocket$update = F2(
 	function (_v0, model) {
 		return model;
 	});
-var $elm$svg$Svg$trustedNode = _VirtualDom_nodeNS('http://www.w3.org/2000/svg');
-var $elm$svg$Svg$circle = $elm$svg$Svg$trustedNode('circle');
 var $elm$svg$Svg$Attributes$cx = _VirtualDom_attribute('cx');
 var $elm$svg$Svg$Attributes$cy = _VirtualDom_attribute('cy');
+var $elm$svg$Svg$Attributes$enableBackground = _VirtualDom_attribute('enable-background');
+var $elm$svg$Svg$Attributes$fill = _VirtualDom_attribute('fill');
+var $elm$core$String$fromFloat = _String_fromNumber;
 var $elm$svg$Svg$Attributes$height = _VirtualDom_attribute('height');
-var $elm$svg$Svg$Attributes$r = _VirtualDom_attribute('r');
+var $author$project$Rocket$makeTailSegments = F2(
+	function (n, seg) {
+		if (n <= 0) {
+			return _List_Nil;
+		} else {
+			var yDecay = 0.8;
+			var xDecay = 0.6;
+			var cDecay = 0.8;
+			var newSeg = {blue: seg.blue * cDecay, dy: seg.dy + (seg.ry * (1.0 + (0.2 * yDecay))), green: seg.green * cDecay, red: seg.red * cDecay, rx: seg.rx * xDecay, ry: seg.ry * yDecay};
+			return _Utils_ap(
+				_List_fromArray(
+					[newSeg]),
+				A2($author$project$Rocket$makeTailSegments, n - 1, newSeg));
+		}
+	});
+var $elm$svg$Svg$trustedNode = _VirtualDom_nodeNS('http://www.w3.org/2000/svg');
+var $elm$svg$Svg$rect = $elm$svg$Svg$trustedNode('rect');
 var $elm$svg$Svg$svg = $elm$svg$Svg$trustedNode('svg');
 var $elm$svg$Svg$Attributes$viewBox = _VirtualDom_attribute('viewBox');
+var $elm$svg$Svg$ellipse = $elm$svg$Svg$trustedNode('ellipse');
+var $elm$svg$Svg$Attributes$rx = _VirtualDom_attribute('rx');
+var $elm$svg$Svg$Attributes$ry = _VirtualDom_attribute('ry');
+var $author$project$Rocket$segmentColor = function (seg) {
+	return 'rgb(' + ($elm$core$String$fromFloat(seg.red) + (',' + ($elm$core$String$fromFloat(seg.green) + (',' + ($elm$core$String$fromFloat(seg.blue) + ')')))));
+};
+var $author$project$Rocket$viewSegment = F3(
+	function (x, y, seg) {
+		return A2(
+			$elm$svg$Svg$ellipse,
+			_List_fromArray(
+				[
+					$elm$svg$Svg$Attributes$cx(
+					$elm$core$String$fromFloat(x)),
+					$elm$svg$Svg$Attributes$cy(
+					$elm$core$String$fromFloat(y + seg.dy)),
+					$elm$svg$Svg$Attributes$rx(
+					$elm$core$String$fromFloat(seg.rx)),
+					$elm$svg$Svg$Attributes$ry(
+					$elm$core$String$fromFloat(seg.ry)),
+					$elm$svg$Svg$Attributes$fill(
+					$author$project$Rocket$segmentColor(seg))
+				]),
+			_List_Nil);
+	});
 var $elm$svg$Svg$Attributes$width = _VirtualDom_attribute('width');
 var $author$project$Rocket$view = function (model) {
+	var screenWidth = 920;
+	var screenHeight = 920;
+	var initialSeg = {blue: 255.0, dy: 0.0, green: 255.0, red: 255.0, rx: model.r, ry: model.r};
 	return A2(
 		$elm$svg$Svg$svg,
 		_List_fromArray(
 			[
-				$elm$svg$Svg$Attributes$width('120'),
-				$elm$svg$Svg$Attributes$height('120'),
-				$elm$svg$Svg$Attributes$viewBox('0 0 120 120')
+				$elm$svg$Svg$Attributes$width(
+				$elm$core$String$fromInt(screenWidth)),
+				$elm$svg$Svg$Attributes$height(
+				$elm$core$String$fromInt(screenHeight)),
+				$elm$svg$Svg$Attributes$viewBox(
+				'0 0 ' + ($elm$core$String$fromInt(screenWidth) + (' ' + $elm$core$String$fromInt(screenHeight)))),
+				$elm$svg$Svg$Attributes$fill('rgb(51,51,51)'),
+				$elm$svg$Svg$Attributes$enableBackground('1')
 			]),
-		_List_fromArray(
-			[
+		_Utils_ap(
+			_List_fromArray(
+				[
+					A2(
+					$elm$svg$Svg$rect,
+					_List_fromArray(
+						[
+							$elm$svg$Svg$Attributes$cx(
+							$elm$core$String$fromFloat(screenWidth / 2)),
+							$elm$svg$Svg$Attributes$cy(
+							$elm$core$String$fromFloat(screenHeight / 2)),
+							$elm$svg$Svg$Attributes$width(
+							$elm$core$String$fromInt(screenWidth)),
+							$elm$svg$Svg$Attributes$height(
+							$elm$core$String$fromInt(screenHeight))
+						]),
+					_List_Nil)
+				]),
+			$elm$core$List$reverse(
 				A2(
-				$elm$svg$Svg$circle,
-				_List_fromArray(
-					[
-						$elm$svg$Svg$Attributes$cx(
-						$elm$core$String$fromInt(model.x)),
-						$elm$svg$Svg$Attributes$cy(
-						$elm$core$String$fromInt(model.y)),
-						$elm$svg$Svg$Attributes$r(
-						$elm$core$String$fromInt(model.r))
-					]),
-				_List_Nil)
-			]));
+					$elm$core$List$map,
+					A2($author$project$Rocket$viewSegment, model.x, model.y),
+					_Utils_ap(
+						_List_fromArray(
+							[initialSeg]),
+						A2($author$project$Rocket$makeTailSegments, 5, initialSeg))))));
 };
 var $author$project$Rocket$main = $elm$browser$Browser$sandbox(
 	{init: $author$project$Rocket$init, update: $author$project$Rocket$update, view: $author$project$Rocket$view});

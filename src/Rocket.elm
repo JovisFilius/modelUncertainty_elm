@@ -29,7 +29,7 @@ init : Model
 init =
     { x = 150
     , y = 150
-    , r = 100
+    , r = 10
     }
 
 
@@ -51,6 +51,8 @@ update _ model = model
 view : Model -> Html Msg
 view model =
     let
+        screenWidth = 920
+        screenHeight = 920
         initialSeg =
             { rx = model.r
             , ry = model.r
@@ -61,13 +63,20 @@ view model =
             }
     in
     svg
-        [ width "520"
-        , height "520"
-        , viewBox "0 0 520 520"
+        [ width <| fromInt screenWidth
+        , height <| fromInt screenHeight
+        , viewBox <| "0 0 " ++ fromInt screenWidth ++ " " ++ fromInt screenHeight
         , fill "rgb(51,51,51)"
         , enableBackground "1"
         ]
-        <| [rect [cx "260", cy "260", width "520", height "520"] []]
+        <| [ rect
+                [ cx <| fromFloat (screenWidth / 2)
+                , cy <| fromFloat (screenHeight / 2)
+                , width <| fromInt screenWidth
+                , height <| fromInt screenHeight
+                ]
+                []
+            ]
         ++ List.reverse (List.map (viewSegment model.x model.y)
         ([initialSeg] ++ makeTailSegments 5 initialSeg))
 

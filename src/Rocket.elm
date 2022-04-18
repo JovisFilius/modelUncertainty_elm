@@ -3,32 +3,32 @@ module Rocket exposing (..)
 import Browser
 import Html exposing (Html)
 
-import Element exposing (layout, text)
-import Svg exposing (Svg, svg, circle, ellipse, rect)
-import Svg.Attributes exposing  ( width, height, cx, cy, r
+import Element as E
+import Svg as S exposing (Svg, svg, circle, ellipse, rect)
+import Svg.Attributes as SA exposing  ( width, height, cx, cy, r
                                 , rx, ry, viewBox, color, fill
                                 , enableBackground
                                 )
 import String exposing (fromInt, fromFloat)
 
 
-main = Browser.sandbox { init = init, update = update, view = view }
+-- main = Browser.sandbox { init = init, update = update, view = testView }
 
 
 -- MODEL
 
 
-type alias Model =
+type alias Rocket =
     { x : Float
     , y : Float
     , r : Float
     }
 
 
-init : Model
+init : Rocket
 init =
-    { x = 150
-    , y = 150
+    { x = 550
+    , y = 750
     , r = 10
     }
 
@@ -37,48 +37,59 @@ init =
 -- UPDATE
 
 
-type Msg = NoOp
+-- type Msg = NoOp
 
 
-update : Msg -> Model -> Model
-update _ model = model
+-- update : Msg -> Rocket -> Rocket
+-- update _ rocket = rocket
 
 
 
 -- VIEW
 
 
-view : Model -> Html Msg
-view model =
-    let
-        screenWidth = 920
-        screenHeight = 920
-        initialSeg =
-            { rx = model.r
-            , ry = model.r
-            , dy = 0.0
-            , red = 255.0
-            , green = 255.0
-            , blue = 255.0
-            }
+-- testView : Rocket -> Html Msg
+-- testView rocket =
+--     let
+--         screenWidth = 920
+--         screenHeight = 920
+--     in
+--     E.layout
+--         []
+--         <| E.column
+--             [ E.centerX
+--             , E.centerY
+--             , E.height E.fill
+--             --, E.width E.fill
+--             , E.padding 75
+--             --, explain Debug.todo
+--             ]
+--             [ E.html <| svg
+--                 [ width <| fromInt screenWidth
+--                 , height <| fromInt screenHeight
+--                 , viewBox <| "0 0 " ++ fromInt screenWidth ++ " " ++ fromInt screenHeight
+--                 , fill "rgb(51,51,51)"
+--                 , enableBackground "1"
+--                 ]
+--                 <| rect
+--                         [ cx <| fromFloat (screenWidth / 2)
+--                         , cy <| fromFloat (screenHeight / 2)
+--                         , width <| fromInt screenWidth
+--                         , height <| fromInt screenHeight
+--                         ]
+--                         []
+--                 ::  view rocket
+--             ]
+
+
+view : Rocket -> List (Svg msg)
+view rocket =
+    let 
+        tip = initialSeg rocket
     in
-    svg
-        [ width <| fromInt screenWidth
-        , height <| fromInt screenHeight
-        , viewBox <| "0 0 " ++ fromInt screenWidth ++ " " ++ fromInt screenHeight
-        , fill "rgb(51,51,51)"
-        , enableBackground "1"
-        ]
-        <| [ rect
-                [ cx <| fromFloat (screenWidth / 2)
-                , cy <| fromFloat (screenHeight / 2)
-                , width <| fromInt screenWidth
-                , height <| fromInt screenHeight
-                ]
-                []
-            ]
-        ++ List.reverse (List.map (viewSegment model.x model.y)
-        ([initialSeg] ++ makeTailSegments 5 initialSeg))
+        List.reverse
+            <| List.map (viewSegment rocket.x rocket.y)
+                ([tip] ++ makeTailSegments 5 tip)
 
 
 type alias Segment =
@@ -88,6 +99,17 @@ type alias Segment =
     , red : Float
     , green : Float
     , blue : Float
+    }
+
+
+initialSeg : Rocket -> Segment
+initialSeg rocket =
+    { rx = rocket.r
+    , ry = rocket.r
+    , dy = 0.0
+    , red = 242.25
+    , green = 242.25
+    , blue = 242.25
     }
 
 
@@ -112,7 +134,7 @@ makeTailSegments n seg =
             [newSeg] ++ makeTailSegments (n-1) newSeg
 
 
-viewSegment : Float -> Float -> Segment -> Svg Msg
+viewSegment : Float -> Float -> Segment -> Svg msg
 viewSegment x y seg =
     ellipse
         [ cx <| fromFloat x
@@ -120,7 +142,6 @@ viewSegment x y seg =
         , rx <| fromFloat seg.rx
         , ry <| fromFloat seg.ry
         , fill <| segmentColor seg
-        -- , fill <| fromFloat seg.red ++ " " ++ fromFloat seg.green ++ " " ++ fromFloat seg.blue
         ]
         []
 
@@ -128,3 +149,5 @@ viewSegment x y seg =
 segmentColor : Segment -> String
 segmentColor seg =
     "rgb(" ++ fromFloat seg.red ++ "," ++ fromFloat seg.green ++ "," ++ fromFloat seg.blue ++ ")"
+
+

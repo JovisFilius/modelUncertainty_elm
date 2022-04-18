@@ -36,20 +36,12 @@ import Process
 
 
 main =
-    Browser.application
-        { init = init
-        , view = view
-        , update = update
-        , subscriptions = subscriptions
-        , onUrlRequest = (\_ -> NoOp)
-        , onUrlChange = (\_ -> NoOp)
-        }
---     Browser.element
---         { init = init
---         , update = update
---         , subscriptions = subscriptions
---         , view = view
---         }
+     Browser.element
+         { init = init
+         , update = update
+         , subscriptions = subscriptions
+         , view = view
+         }
 
 
 -- MODEL
@@ -147,8 +139,8 @@ statusToString s =
 type alias DistModel = Random.Generator Profile
 
 
-init : () -> Url -> Browser.Navigation.Key -> (ProgramState, Cmd Msg)
-init _ _ _ = (WelcomeState "", Cmd.none)
+init : () -> (ProgramState, Cmd Msg)
+init _ = (WelcomeState "", Cmd.none)
 
 
 initExperiment x =
@@ -406,56 +398,52 @@ filterSpace str =
 -- VIEW
 
 
-view : ProgramState -> Browser.Document Msg
+view : ProgramState -> Html Msg
 view programState =
-    { title = "model uncertainty experiment"
-    , body =
-        case programState of
-            WelcomeState debugStr ->
-                viewWelcome debugStr
+    case programState of
+        WelcomeState debugStr ->
+            viewWelcome debugStr
 
-            Running state ->
-                [ layout
-                    []
-                    <| column
+        Running state ->
+            layout
+                []
+                <| column
+                    [ centerX
+                    , centerY
+                    , height fill
+                    , width fill
+                    , padding 75
+                    -- , explain Debug.todo
+                    ]
+                    [ heightFiller
+                    , drawScreen state
+                    , heightFiller
+                    , el [centerX] <| text <| "[" ++ state.debugStr ++ "]"
+                   -- , el
+                   --     [ centerX
+                   --     , alignBottom
+                   --     ]
+                   --     <| text <| (statusToString << status) state.currentTrial
+                   --     ++ "[" ++ fromFloat <| getX state ++ ", "
+                   --     ++ ( case state.rocketY of
+                   --             Just y -> fromFloat y
+                   --             Nothing -> ""
+                   --         )
+                   --     ++ "] " ++ "cue: " ++ (if state.cue then "true" else "false")
+                    , row
                         [ centerX
-                        , centerY
-                        , height fill
-                        , width fill
-                        , padding 75
-                        -- , explain Debug.todo
+                        , alignBottom
+                        , spacing 85
                         ]
-                        [ heightFiller
-                        , drawScreen state
-                        , heightFiller
-                        , el [centerX] <| text <| "[" ++ state.debugStr ++ "]"
-                       -- , el
-                       --     [ centerX
-                       --     , alignBottom
-                       --     ]
-                       --     <| text <| (statusToString << status) state.currentTrial
-                       --     ++ "[" ++ fromFloat <| getX state ++ ", "
-                       --     ++ ( case state.rocketY of
-                       --             Just y -> fromFloat y
-                       --             Nothing -> ""
-                       --         )
-                       --     ++ "] " ++ "cue: " ++ (if state.cue then "true" else "false")
-                        , row
-                            [ centerX
-                            , alignBottom
-                            , spacing 85
-                            ]
-                            [ propertySlider (500, 1500) "Width" state.width SetWidth
-                            , propertySlider (500, 1500) "Height" state.height SetHeight
-                            ]
+                        [ propertySlider (500, 1500) "Width" state.width SetWidth
+                        , propertySlider (500, 1500) "Height" state.height SetHeight
                         ]
-                ]
-    }
+                    ]
 
 
-viewWelcome : String -> List (Html Msg)
+viewWelcome : String -> Html Msg
 viewWelcome debugStr = 
-    [ layout
+    layout
         [ Font.family
             [ Font.typeface "Lato"
             ]
@@ -495,7 +483,6 @@ viewWelcome debugStr =
             , text debugStr
             , heightFillerW 2
             ]
-    ]
 
 
 drawScreen : ExperimentState -> Element Msg

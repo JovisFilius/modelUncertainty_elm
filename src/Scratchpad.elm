@@ -36,6 +36,16 @@ main =
             , strokeWidth "5"
             ]
             []
+        , text_
+            [ x "10"
+            , y "100"
+            , fontFamily "Lato light"
+            , fontSize "36"
+            --, fontStyle "italic"
+            --, fontWeight "bold"
+            ]
+            [ text "foo"
+            ]
         ]
 
 makeCrossPolygonPoints : (Float, Float) -> Float -> List (Float,Float)

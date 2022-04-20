@@ -22,6 +22,7 @@ import Element.Input exposing
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Element.Events exposing (onClick)
 import Svg exposing (Svg, svg)
 import Svg.Attributes as SA
 
@@ -46,7 +47,7 @@ todoList = List.map Do
 todo : List Todo
 todo =
     [ P "side menu bar"
-        [ Do "overlay elements over other elements"
+        [ Doing "overlay elements over other elements (Element.inFront, Element.behindContent)"
         , Do "Show menu dots in upper right corner"
         , Do "Show save button in side menu"
         , Do "Show success percentage in side menu"
@@ -54,9 +55,17 @@ todo =
         ]
     , P "Welcome screen"
             [ Do "Replace button with 'press space to start'"
+            , Do "Make a demo mode to explain the experiment"
             ]
-    , P "Experiment screen"
-            [ P "Give task feedback"
+    , P "Experiment logistics"
+            [ Do "Make sure the experiment has the correct no. trials"
+            , P "Make sure the right participant has the correct generative model in each session"
+                [ Do "Make an input/dropdown field for participants to have an id"
+                , Do <| "Make a counter/dropdown to select the index of the"
+                    ++ "session -> each session index corresponds to a generative"
+                    ++ "model in a deterministic manner"
+                ]
+            , P "Give task feedback after each trial"
                 [ Cancel "Only show target when it is hit"
                 , P "keep both rocket and target visible after hit until the next trial initiates"
                     [ Done "Refactor StepRocket to take an absolute time instead of a delta"
@@ -68,9 +77,12 @@ todo =
                     ]
                 , Done "make indicator for trial success"
                 ] 
-            , P "Make screen width a function of screen height"
-                [ Done "initialize screen height: getViewPort : Viewport.viewport.height : Float"
-                , Done "subscribe to screen size changes -> Browser.Events.onResize"
+            , P "Make the experiment screen the proper size"
+                [ P "Make screen width a function of screen height"
+                    [ Done "initialize screen height: getViewPort : Viewport.viewport.height : Float"
+                    , Done "subscribe to screen size changes -> Browser.Events.onResize"
+                    ]
+                , Do "Constrain screen width such that it always fits on the page"
                 ]
             ]
     , P "Debug Log"
@@ -114,6 +126,7 @@ type alias ExperimentState =
         , cue : Bool
         , target : Bool
         , debug : Bool
+        , menu : Bool
         }
 
 
@@ -147,6 +160,7 @@ initExperiment state x =
                 , cue = False
                 , target = False
                 , debug = doDebug
+                , menu = False
                 }
 
         _ -> state
@@ -260,6 +274,8 @@ type Msg
     | HeightChanged Int
     | Debug String
     | SetDebugging Bool
+    | MenuOpen
+    | MenuClose
     | NoOp
 
 
@@ -483,6 +499,16 @@ updateExperimentState msg ({currentTrial} as state) =
             , Cmd.none
             )
 
+        MenuOpen ->
+            ( { state | menu = True }
+            , Cmd.none
+            )
+
+        MenuClose ->
+            ( { state | menu = False }
+            , Cmd.none
+            )
+
         NoOp ->
             ( state, Cmd.none )
 
@@ -654,11 +680,9 @@ view programState =
 
             Running state ->
                 row
-                    [ centerY
-                    , alignLeft
-                    , height fill
+                    [ height fill
                     , width fill
-                    -- , padding 40
+                    , inFront (menuPanel state)
                     ]
                     [ viewDebugLog state.debug state.debugLog
                     , column
@@ -671,8 +695,16 @@ view programState =
                         [ drawScreen state
                         ]
                     , column
-                        [ width fill ]
-                        []
+                        [ width fill
+                        , height fill
+                        ]
+                        [ menuButton
+                            lightgrey
+                            [ alignTop
+                            , alignRight
+                            ]
+                            MenuOpen
+                        ]
                     ]
         )
 
@@ -698,15 +730,15 @@ viewDebugLog doDebug log =
             else
                 none
             )
-        , checkbox
-            [ alignBottom
-            , padding 40
-            ]
-            { onChange = SetDebugging
-            , icon = defaultCheckbox
-            , checked = doDebug
-            , label = labelRight [] <| text "show debugging trace"
-            }
+        -- , checkbox
+        --     [ alignBottom
+        --     , padding 40
+        --     ]
+        --     { onChange = SetDebugging
+        --     , icon = defaultCheckbox
+        --     , checked = doDebug
+        --     , label = labelRight [] <| text "show debugging trace"
+        --     }
         ]
 
 viewDebugEntries : List String -> List (Element Msg)
@@ -971,13 +1003,6 @@ getFeedbackSize state =
     state.params.feedbackSizeFrac * state.height
 
 
-heightFiller =
-    el
-        [ height fill
-        ]
-        none
-
-
 heightFillerW weight =
     el
         [ height <| fillPortion weight
@@ -1018,3 +1043,118 @@ propertySlider (minV, maxV) prop val msgFn =
             , thumb = defaultThumb
             , step = Just 1
             }
+
+
+menuButton : Color -> List (Attribute msg) -> msg -> Element msg
+menuButton buttonColor attrs msg =
+    let
+        radius = 6
+        dot : Int -> Element msg
+        dot r = 
+            el
+                [ Border.rounded r
+                , width <| px r
+                , height <| px r
+                , Background.color buttonColor
+                ]
+                none
+    in
+        column
+            ( [ padding <| 2 * radius
+              , spacing radius
+              , onClick msg
+              ]
+              ++ attrs
+            )
+            <| List.repeat 3 (dot radius)
+
+
+-- menuPanel : List (Attribute msg) -> List (Element msg) -> Element msg -> Element msg
+menuPanel : ExperimentState -> Element Msg
+menuPanel state =
+    if state.menu then
+        el
+            [ width fill
+            , height fill
+            -- , Background.color <| rgba 0 0 0 0.5
+            , onClick MenuClose
+            , inFront
+                <| column
+                    [ Border.rounded 6
+                    , Background.color lightgrey
+                    , Font.color background
+                    -- , padding 10
+                    , alignTop
+                    , alignRight
+                    ]
+                    [ row
+                        [ width fill ]
+                        [ el
+                            [ padding 18
+                            , alignLeft
+                            , centerY
+                            , Font.size 30
+                            , Font.light
+                            ]
+                            <| text "Menu"
+                            , menuButton background [alignRight] MenuClose
+                        ]
+                    , column
+                        [ padding 15
+                        , spacing 15
+                        ]
+                        [ button
+                            [centerX]
+                            { onPress = Just <| SetDebugging (not state.debug)
+                            , label = text
+                                ( if state.debug then
+                                    "Hide debugging"
+                                else
+                                    "Show debugging"
+                                )
+                            }
+                        , button
+                            [centerX]
+                            { onPress = Nothing
+                            , label = text "Reset"
+                            }
+                        , button
+                            [centerX]
+                            { onPress = Nothing
+                            , label = text "Save"
+                            }
+                        , el
+                            [ width fill
+                            , Border.width 1
+                            , Border.color grey
+                            ]
+                            none
+                        , row
+                            [ width fill
+                            , spacing 20
+                            ]
+                            [ column
+                                [ alignLeft
+                                , Font.light
+                                , spacing 15
+                                ]
+                                [ text "Trial index:"
+                                , text "Session performance:"
+                                ]
+                            , column
+                                [ alignRight
+                                , Font.medium
+                                , spacing 15
+                                ]
+                                [ text
+                                    <| (fromInt (trialIdx state))
+                                    ++ " of " ++ (fromInt state.params.nTrials)
+                                , text "##%"
+                                ]
+                            ]
+                        ]
+                    ]
+            ]
+            none
+    else
+        none

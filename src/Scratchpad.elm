@@ -5,7 +5,25 @@ import Browser
 import Html exposing (Html)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
-
+import Element as E exposing
+    ( layout
+    , row
+    , column
+    , el
+    , rgb
+    , px
+    , Element
+    , centerX
+    , centerY
+    , alignRight
+    , alignTop
+    , inFront
+    , none
+    , padding
+    )
+import Element.Border as Border
+import Element.Background as Background
+import Element.Events exposing (onClick)
 
 import String exposing (fromInt, fromFloat)
 import Random
@@ -13,40 +31,157 @@ import Time exposing (Posix, now)
 import Task exposing (perform, andThen)
 import Process
 
-main =
-    svg
-        [ width <| fromFloat 1000.0
-        , height <| fromFloat 1000.0
-        , viewBox <| "0 0 " ++ fromFloat 1000.0 ++ " " ++ fromFloat 1000.0
-        , fill "rgb(51,51,51)"
-        , enableBackground "1"
-        -- , centerX
+
+
+-- MAIN
+
+
+main = Browser.sandbox 
+        { init = False
+        , update = update
+        , view = view
+        }
+
+
+
+-- MODEL
+
+
+type alias Model = Bool
+    -- { menu : String
+    -- }
+
+
+
+-- UPDATE
+
+
+update : Msg -> Model -> Model
+update msg model =
+    case msg of
+        MenuOpen ->
+            True
+        MenuClose ->
+            False
+
+
+type Msg
+    = MenuOpen
+    | MenuClose
+
+
+
+-- VIEW
+
+
+view : Model -> Html Msg
+view model =
+    layout
+        [ inFront <| viewMenu model
         ]
-        [ rect
-            [ x "10"
-            , y "100"
-            , width "100"
-            , height "100"
-            , fill "rgb(255,0,0)"
+        <| row
+            [ E.width E.fill
             ]
-            []
-        , polygon
-            [ points <| pointsToString <| makeCrossPolygonPoints (150,150) 20
-            , stroke "rgb(0,255,255)"
-            , strokeWidth "5"
+            [ E.html <| svg
+                [ width <| fromFloat 500.0
+                , height <| fromFloat 500.0
+                , viewBox <| "0 0 " ++ fromFloat 500.0 ++ " " ++ fromFloat 500.0
+                , fill "rgb(51,51,51)"
+                , enableBackground "1"
+                -- , centerX
+                ]
+                [ rect
+                    [ x "10"
+                    , y "100"
+                    , width "100"
+                    , height "100"
+                    , fill "rgb(51,51,51)"
+                    ]
+                    []
+                , polygon
+                    [ points <| pointsToString <| makeCrossPolygonPoints (150,150) 20
+                    , stroke "rgb(102,102,102)"
+                    , strokeWidth "5"
+                    ]
+                    []
+                , text_
+                    [ x "10"
+                    , y "100"
+                    , fontFamily "Lato light"
+                    , fontSize "36"
+                    --, fontStyle "italic"
+                    --, fontWeight "bold"
+                    ]
+                    [ text "foo"
+                    ]
+                ]
+            , el
+                [centerX, centerY] <| E.text (if model then "menu open" else "menu closed")
+            , column
+                [ E.alignRight
+                , E.alignTop
+                ]
+                [ menuButton [] MenuOpen
+                ]
             ]
-            []
-        , text_
-            [ x "10"
-            , y "100"
-            , fontFamily "Lato light"
-            , fontSize "36"
-            --, fontStyle "italic"
-            --, fontWeight "bold"
+
+
+viewMenu : Model -> Element Msg
+viewMenu model =
+    if model then
+        menuPanel
+            [ alignRight
+            , alignTop
             ]
-            [ text "foo"
+            [ E.text "foo"
+            , E.text "bar"
             ]
+    else
+        none
+
+menuButton : List (E.Attribute Msg) -> Msg -> Element Msg
+menuButton attrs msg =
+    let
+        radius = 6
+        dot : Int -> Element msg
+        dot r = 
+            el
+                [ Border.rounded r
+                , E.width <| px r
+                , E.height <| px r
+                , Background.color lightgrey
+                ]
+                none
+    in
+        column
+            ( [ padding <| 2 * radius
+              , E.spacing radius
+              , onClick msg
+              ]
+              ++ attrs
+            )
+            <| List.repeat 3 (dot radius)
+
+
+menuPanel : List (E.Attribute Msg) -> List (Element Msg) -> Element Msg
+menuPanel attrs els =
+    el
+        [ E.width E.fill
+        , E.height E.fill
+        , Background.color <| E.rgba 0 0 0 0.5
+        , onClick MenuClose
+        , inFront
+            <| column
+                ( [ Border.rounded 6
+                  , Background.color <| lightgrey
+                  , E.padding 10
+                  ]
+                  ++ attrs
+                )
+                ([] ++ els)
         ]
+        none
+
 
 makeCrossPolygonPoints : (Float, Float) -> Float -> List (Float,Float)
 makeCrossPolygonPoints (x,y) w =
@@ -61,3 +196,6 @@ pointsToString points =
 
         (x,y)::ps ->
             fromFloat x ++ "," ++ fromFloat y ++ " " ++ pointsToString ps
+
+
+lightgrey = rgb 0.8 0.8 0.8

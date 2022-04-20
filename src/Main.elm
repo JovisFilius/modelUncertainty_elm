@@ -30,43 +30,110 @@ import Rocket as R
 
 import String exposing (fromInt, fromFloat)
 import Random
-import Time exposing (Posix, now)
+import Time exposing (Posix, now, millisToPosix, posixToMillis)
 import Task exposing (perform, andThen)
 import Process
+import File.Download as Download
 
 
 
 -- TODO
 
 
-type Todo = P String (List Todo) | Do String | Doing String | Done String | Cancel String
+type Todo
+    = P String (List Todo)
+    | Do Urgency String
+    | Doing String
+    | Done String
+    | Canceled String
 
-todoList : List String -> List Todo
-todoList = List.map Do
+type Urgency
+    = High
+    | Medium
+    | Low
 
 todo : List Todo
 todo =
     [ P "side menu bar"
-        [ Doing "overlay elements over other elements (Element.inFront, Element.behindContent)"
-        , Do "Show menu dots in upper right corner"
-        , Do "Show save button in side menu"
-        , Do "Show success percentage in side menu"
-        , Do "Show trialIdx in side menu"
+        [ Done "overlay elements over other elements (Element.inFront, Element.behindContent)"
+        , Done "Show menu dots in upper right corner"
+        , Done "Show save button in side menu"
+        , Do Low "Show success percentage in side menu"
+        , Done "Show trialIdx in side menu"
+        ]
+    , P "Data logistics"
+        [ Done "Download a string to a file"
+        , P "Convert trials to csv"
+            [ P "What are the columns in the csv output?"
+                [ P "Column1 are the X coordinates"
+                    [ Done "What are the boundaries of the x values"
+                    , Done "The x values range from -150 to +150"
+                    ]
+                , Done "Column 2 are the baselines"
+                , Done "Column 3 are the produced intervals"
+                ]
+            , Done "Implement trials2Csv"
+            ]
+        , Done "Save data when save button is clicked"
+        , Do Low "Warn when trying to save an incomplete session"
         ]
     , P "Welcome screen"
-            [ Do "Replace button with 'press space to start'"
-            , Do "Make a demo mode to explain the experiment"
+            [ Done "Replace button with 'press space to start'"
+            , Canceled "Have dropdowns to choose the session index"
+            , Do Low "Animate (i.e. fade in/out) the 'press space to start' string"
+            , P  "Show help"
+                [ Do Medium "Show help button on welcome screen"
+                , Do Medium "Show help popup when 'help' is clicked"
+                ]
+            , Do Low "Make a demo mode to explain the experiment"
+            , Done "Make two buttons to allow choosing Train vs Test session"
             ]
     , P "Experiment logistics"
-            [ Do "Make sure the experiment has the correct no. trials"
+            [ P "Make sure the experiment has the correct no. trials"
+                [ Done "On mixture sessions, start with 50 trials of 'baseline'"
+                , Done "What is the model type during the baseline of mixture sessions?"
+                , Done "The baseline is quadratic"
+                , Done "On mixture sessions, have 100 trials per mixture condition"
+                ]
+            , P "Sample random Profile for each trial"
+                [ P "When updating with the MakeTrial message -> Sample random profile and send it to 'newTrial"
+                    [ Done "Check if its possible to chain the commands for sampling a profile and samping the x coordinate together"
+                    , Canceled "Use Cmd.batch to sample both the x coord and the profile"
+                    , Done "Chain the sampling of the profile and the x coord after each other"
+                    ]
+                ]
+            , P "What is the makeup of the training data? -> Check in matlab"
+                [ Done "Determine total no. trials -> 360"
+                , Done "ALl three models are in the data"
+                , P "Determine order of different models"
+                    [ Done "The order is different for different participants"
+                    , Done "The training consists of three stages of 120 trials with only unmixed models"
+                    , Do Low "There are in fact six different ways of making training sessions (with the models in a different order) -> Check with Devika whether these should be implemented or if a single type of training session is sufficient"
+                    ]
+                ]
+            , P "Enable the experiment with the different models"
+                [ P "Implement the order and composition of the different models"
+                    [ Done "The mixtures are LC (linear+const) and QC (quadratic+const)"
+                    , Done "The test experiment consists of six sessions"
+                    , Done "QC1-3 followed by LC1-3, with Q:C and L:C as given by"
+                    , Done "QC1 -> 15:85, QC2 -> 65:35, QC3 -> 50:50"
+                    , Done "LC1 -> 50:50, LC2 -> 65:35, LC3 -> 85:15"
+                    ]
+                ]
             , P "Make sure the right participant has the correct generative model in each session"
-                [ Do "Make an input/dropdown field for participants to have an id"
-                , Do <| "Make a counter/dropdown to select the index of the"
+                [ Do Low "Make an input/dropdown field for participants to have an id"
+                , Done "Map session index to generative model"
+                , Canceled <| "Make a counter/dropdown to select the index of the"
                     ++ "session -> each session index corresponds to a generative"
                     ++ "model in a deterministic manner"
                 ]
             , P "Give task feedback after each trial"
-                [ Cancel "Only show target when it is hit"
+                [ Canceled "Only show target when it is hit"
+                , Done "Freeze the whole experiment at the moment the trial has elapsed"
+                , P "Assign points on successful trials"
+                    [ Do Medium "exponential within eligibility window"
+                    , Do Medium "Show cumulative points on the top of the screen"
+                    ]
                 , P "keep both rocket and target visible after hit until the next trial initiates"
                     [ Done "Refactor StepRocket to take an absolute time instead of a delta"
                     , Done "Refactor the update StepRocket to Finish the trial internally if it reaches the target height"
@@ -74,22 +141,25 @@ todo =
                 , P "make indicator for trial failure"
                     [ Done "Show cross icon"
                     , Done "Write feedback about the error"
+                    , Do Low "Align centers of feedback text and cross icon (Svg magic)"
                     ]
-                , Done "make indicator for trial success"
+                , P "make indicator for trial success"
+                    [ Done "Show green checkmark"
+                    , Do Medium "Ring a sound on target hit"
+                    , Do Medium "Show awardeder points"
+                    ]
                 ] 
             , P "Make the experiment screen the proper size"
                 [ P "Make screen width a function of screen height"
                     [ Done "initialize screen height: getViewPort : Viewport.viewport.height : Float"
                     , Done "subscribe to screen size changes -> Browser.Events.onResize"
                     ]
-                , Do "Constrain screen width such that it always fits on the page"
+                , Do Low "Constrain screen width such that it always fits on the page"
                 ]
             ]
     , P "Debug Log"
         [ Done "Show new debug messages at the top -> append to head of debugLog"
-        ]
-    , P "Save data"
-        [ Do "save string contens to file"
+        , Do Low "Make debugLog a floating object"
         ]
     ]
 
@@ -111,17 +181,23 @@ main =
 
 
 type ProgramState
-    = WelcomeState Bool (List String)
+    = Initializing SetupState
     | Running ExperimentState
 
 
+type alias SetupState =
+    { debug : Bool
+    , debugLog : List String
+    , sessionType : SessionType
+    }
+
+
 type alias ExperimentState =
-        { params : Params
+        { sessionType : SessionType
         , height : Float
         , width : Float 
-        , results : List Trial
+        , results : List TrialData
         , currentTrial : Trial
-        , distModel : DistModel
         , debugLog : List String
         , cue : Bool
         , target : Bool
@@ -132,7 +208,11 @@ type alias ExperimentState =
 
 init : () -> (ProgramState, Cmd Msg)
 init _ =
-    ( WelcomeState False []
+    ( Initializing
+        { debug = False
+        , debugLog = []
+        , sessionType = Train
+        }
     , Cmd.none
     )
 
@@ -145,25 +225,24 @@ viewport2HeightChanged v =
         HeightChanged height
 
 
-initExperiment : ProgramState -> Float -> ProgramState
-initExperiment state x =
-    case state of
-        WelcomeState doDebug debugLog ->
+initExperiment : ProgramState -> Profile -> Float -> ProgramState
+initExperiment programState profile x =
+    case programState of
+        Initializing state ->
             Running
-                { params = defaultParams
-                , height = 740
+                { height = 740
                 , width = 960
                 , results = []
-                , currentTrial = newTrial x
-                , distModel = Random.weighted (100, Constant) []
-                , debugLog = debugLog
+                , currentTrial = newTrial profile x
+                , debugLog = state.debugLog
                 , cue = False
                 , target = False
-                , debug = doDebug
+                , debug = state.debug
                 , menu = False
+                , sessionType = state.sessionType
                 }
 
-        _ -> state
+        _ -> programState
 
 
 type alias Params =
@@ -172,7 +251,6 @@ type alias Params =
     , cueDuration : Float
     , targetDuration : Float
     , iti : Float
-    , nTrials : Int
     -- , stepY : Float
     , flightDuration : Float
     , stepT : Int
@@ -186,53 +264,47 @@ type alias Params =
     }
 
 
-defaultParams : Params
-defaultParams =
+params : Params
+params =
     { trialDelayMin = 150
     , trialDelayMax = 1000
     , cueDuration = 35.0
     , targetDuration = 150.0
     , iti = 1500.0
-    , nTrials = 80
-    -- , stepY = 0.1
     , flightDuration = 300.0
     , stepT = 1
     , rocketSizeFrac = 0.0075
-    , targetSizeFrac = 0.0075
-    , feedbackSizeFrac = 0.075
-    , cueWidthFrac = 0.0375
+    , targetSizeFrac = 0.015
+    , feedbackSizeFrac = 0.055
+    , cueWidthFrac = 0.05
     , startYFrac = 0.25
     , targetYFrac = 0.75
     , aspectRatio = 8/6
     }
 
 
-type alias Trial =
+type Trial
+    = Idle
+        { xFrac : Float
+        , profile : Profile
+        }
+    | Launchable
+        { xFrac : Float
+        , profile : Profile
+        , initialDelay : Float
+        , startTime : Posix
+        }
+    | Launched TrialData
+
+
+type alias TrialData =
     { xFrac : Float
-    , error : Float
-    , result : Bool
     , profile : Profile
-    , status : TrialStatus
-    , rocketY : Float
     , initialDelay : Float
     , startTime : Posix
+    , currentTime : Posix
     , launchTime : Posix
-    , arrivalTime : Posix
     }
-
-
-type TrialStatus
-    = Idle
-    | Waiting
-    | Launchable
-    | Launching
-    | Finished Bool
-
-
-type Profile
-    = Constant
-    | Linear
-    | Quadratic
 
 
 trialIdx : ExperimentState -> Int
@@ -242,18 +314,99 @@ trialIdx state =
 
 statusToString : Trial -> String
 statusToString trial =
-    case trial.status of
-        Idle -> "idle"
-        Waiting -> "initialwait"
-        Launchable -> "launchable"
-        Launching -> "launching"
-        Finished flying -> "finished [result="
-                    ++ (if trial.result then "success" else "failure")
-                    ++ " [err="++fromFloat trial.error ++"]"
-                    ++ ",stillFlying="++(if flying then "True" else "False")++"]]"
+    case trial of
+        Idle _ -> "idle"
+        Launchable _ -> "launchable"
+        Launched _ -> "launched"
+--        Finished flying -> "finished [result="
+--                    ++ (if trial.result then "success" else "failure")
+--                    ++ " [err="++fromFloat trial.error ++"]"
+--                    ++ ",stillFlying="++(if flying then "True" else "False")++"]]"
         
 
+type SessionType
+    = Train
+    | Test
+
+
+nTrials : SessionType -> Int
+nTrials s =
+    case s of
+        Train -> 360
+        Test -> 650
+
+
+type ModelID
+    = C
+    | L
+    | Q
+    | QC1
+    | QC2
+    | QC3
+    | LC1
+    | LC2
+    | LC3
+
+
+getDistModel : ModelID -> DistModel
+getDistModel id =
+    case id of
+        C -> Random.weighted (100, Constant) []
+        L -> Random.weighted (100, Linear) []
+        Q -> Random.weighted (100, Quadratic) []
+        QC1 -> Random.weighted (85,Quadratic) [(15,Constant)]
+        QC2 -> Random.weighted (65,Quadratic) [(35,Constant)]
+        QC3 -> Random.weighted (50,Quadratic) [(50,Constant)]
+        LC1 -> Random.weighted (50,Linear) [(50,Constant)]
+        LC2 -> Random.weighted (65,Linear) [(35,Constant)]
+        LC3 -> Random.weighted (85,Linear) [(15,Constant)]
+
+
+type Profile
+    = Constant
+    | Linear
+    | Quadratic
+
+
+profile2Str : Profile -> String
+profile2Str p =
+    case p of
+        Constant -> "Constant"
+        Linear -> "Linear"
+        Quadratic -> "Quadratic"
+
+
 type alias DistModel = Random.Generator Profile
+
+getModelId : Int -> SessionType -> ModelID
+getModelId iTr sType =
+    case sType of
+        Train ->
+            if iTr <= 120 then
+                L
+            else if iTr <= 240 then
+                C
+            else --if iTr <= 360 then
+                Q
+
+        Test ->
+            if iTr <= 50 then
+                Q
+            else if iTr <= 150 then
+                QC1
+            else if iTr <= 250 then
+                QC2
+            else if iTr <= 350 then
+                QC3
+            else if iTr <= 450 then
+                LC1
+            else if iTr <= 550 then
+                LC2
+            else --if iTr <= 650 then
+                LC3
+
+
+--type alias DistModel = List (Profile, Int)
 
 
 
@@ -262,53 +415,80 @@ type alias DistModel = Random.Generator Profile
 
 type Msg
     = MakeTrial
+    | SetSessionType SessionType
     | SpacePressed
-    | PrepTrial Float
-    | StartTrial Posix
+    | RandomDelay Float
+    | StartTrial Float Posix
     | HideCue
     | ShowTarget
-    | HideTarget
+    | TrialEnd
     | LaunchRocket Posix
     | StepRocket Posix
-    | SampleX Float
+    | RandomProfile Profile
+    | RandomProfileAndX Profile Float
     | HeightChanged Int
     | Debug String
     | SetDebugging Bool
     | MenuOpen
     | MenuClose
+    | SaveResults
     | NoOp
 
 
 update : Msg -> ProgramState -> ( ProgramState, Cmd Msg )
 update msg programState =
     case programState of
-        WelcomeState doDebug debugLog -> 
-            case msg of
-                MakeTrial ->
-                    ( programState
-                    , Random.generate SampleX (Random.float 0 1)
-                    )
+        Running state ->
+            (\(newState, cmd) -> (Running newState, cmd)) <| updateExperimentState msg state
 
-                SampleX x ->
-                    ( initExperiment programState x
+        Initializing state -> 
+            case msg of
+                RandomProfileAndX profile x ->
+                    ( initExperiment programState profile x
                     , Task.perform viewport2HeightChanged getViewport
                     )
 
-                SetDebugging bool ->
-                    ( WelcomeState bool debugLog
-                    , Cmd.none
-                    )
-
-                Debug str ->
-                    ( WelcomeState doDebug (str::debugLog)
-                    , Cmd.none
-                    )
-
                 _ ->
-                    (programState, Cmd.none)
+                    (\(newState, cmd) -> (Initializing newState, cmd)) <| updateSetupState msg state
 
-        Running state ->
-            (\(newState, cmd) -> (Running newState, cmd)) <| updateExperimentState msg state
+
+updateSetupState : Msg -> SetupState -> (SetupState, Cmd Msg)
+updateSetupState msg state =
+    case msg of
+        SetSessionType sType ->
+            ( { state | sessionType = sType }
+            , Cmd.none
+            )
+
+        MakeTrial ->
+            ( state
+            , Random.generate
+                RandomProfile
+                (getDistModel <| getModelId 1 state.sessionType)
+            )
+
+        RandomProfile profile ->
+            ( state
+            , Random.generate (RandomProfileAndX profile) (Random.float 0 1)
+            )
+
+        SpacePressed ->
+            ( state
+            , Task.perform (\_ -> MakeTrial) Time.now
+            )
+
+        SetDebugging bool ->
+            ( { state | debug = bool }
+            , Cmd.none
+            )
+
+        Debug str ->
+            ( { state | debugLog = str::state.debugLog }
+            , Cmd.none
+            )
+
+        _ ->
+            (state, Cmd.none)
 
 
 updateExperimentState : Msg -> ExperimentState -> (ExperimentState, Cmd Msg)
@@ -321,30 +501,41 @@ updateExperimentState msg ({currentTrial} as state) =
 
         MakeTrial ->
             ( { state
-              | debugLog =
+              | target = False
+              , debugLog =
                     ("MakeTrial [trialIdx="++(fromInt <| trialIdx state)++"]")::state.debugLog
               }
-            , Random.generate SampleX (Random.float 0 1)
+            , Random.generate
+                RandomProfile
+                (getDistModel <| getModelId (trialIdx state) state.sessionType)
             )
 
-        SampleX x ->
+        RandomProfile profile ->
             ( { state
-              | currentTrial = newTrial x
+              | debugLog = 
+                    ("RandomProfile ["++profile2Str profile++"]")::state.debugLog
+              }
+            , Random.generate (RandomProfileAndX profile) (Random.float 0 1)
+            )
+
+        RandomProfileAndX profile x ->
+            ( { state
+              | currentTrial = newTrial profile x
               , debugLog = ("sampleX [x="++fromFloat x++"]")::state.debugLog
               }
             , Cmd.none
             )
 
         SpacePressed ->
-            case currentTrial.status of
-                Idle ->
+            case currentTrial of
+                Idle _ ->
                     ( { state | debugLog = "SpacePressed"::state.debugLog
                       }
-                    , Random.generate PrepTrial (Random.float 150.0 1000.0)
+                    , Random.generate RandomDelay (Random.float 150.0 1000.0)
                     )
                     -- , Task.perform PrepTrial Time.now
 
-                Launchable ->
+                Launchable _ ->
                     ( { state
                       | debugLog = "SpacePressed"::state.debugLog
                       }
@@ -354,24 +545,23 @@ updateExperimentState msg ({currentTrial} as state) =
                 _ ->
                     ( state, Cmd.none )
 
-        PrepTrial t ->
+        RandomDelay delay ->
             ( { state
-              | currentTrial = prepareTrial t state.currentTrial
-              , debugLog = ("PrepTrial [delay=" ++ (fromFloat t) ++ "] ")::state.debugLog
+              | debugLog = ("RandomDelay [" ++ (fromFloat delay) ++ "] ")::state.debugLog
               }
-            , Task.perform StartTrial (Process.sleep t |> andThen (\_ -> now))
+            , Task.perform (StartTrial delay) (Process.sleep delay |> andThen (\_ -> now))
             )
 
-        StartTrial time ->
+        StartTrial delay startTime ->
             let
-                durationStr = fromFloat <| intendedDuration state.currentTrial
+                durationStr = fromFloat <| duration state.currentTrial
             in
                 ( { state
-                  | currentTrial = startTrial time state.currentTrial
+                  | currentTrial = startTrial delay startTime state.currentTrial
                   , cue = True
-                  , debugLog = ("StartTrial [intendedDuration="++durationStr++"]")::state.debugLog
+                  , debugLog = ("StartTrial [duration="++durationStr++"]")::state.debugLog
                   }
-                , Task.perform (\_ -> HideCue) (Process.sleep state.params.cueDuration)
+                , Task.perform (\_ -> HideCue) (Process.sleep params.cueDuration)
                 )
 
         HideCue ->
@@ -382,9 +572,9 @@ updateExperimentState msg ({currentTrial} as state) =
             , Task.perform
                 (\_ -> ShowTarget)
                 (Process.sleep <|
-                    (intendedDuration state.currentTrial)
-                    - state.params.cueDuration
-                    - state.params.targetDuration / 2
+                    (duration state.currentTrial)
+                    - params.cueDuration
+                    - params.targetDuration / 2
                 )
             )
 
@@ -393,15 +583,14 @@ updateExperimentState msg ({currentTrial} as state) =
               | target = True
               , debugLog = "ShowTarget"::state.debugLog
               }
-            , Task.perform (\_ -> HideTarget) (Process.sleep state.params.targetDuration)
+            , Task.perform (\_ -> TrialEnd) (Process.sleep params.targetDuration)
             )
 
-        HideTarget ->
+        TrialEnd ->
             ( { state
-              | target = False
-              , debugLog = "HideTarget"::state.debugLog
+              | debugLog = "TrialEnd"::state.debugLog
               }
-            , Cmd.none
+            , Task.perform (\_ -> MakeTrial) (Process.sleep params.iti)
             )
 
         LaunchRocket time ->
@@ -412,78 +601,86 @@ updateExperimentState msg ({currentTrial} as state) =
             , Cmd.none
             )
 
-        StepRocket currentTime ->
-            case currentTrial.status of
-                Finished True ->
+        StepRocket newTime ->
+            case currentTrial of
+                Launched trialData ->
                     let
-                        dt = toFloat
-                            <| (Time.posixToMillis currentTime)
-                            - (Time.posixToMillis currentTrial.launchTime)
-
-                        dy = dt / state.params.flightDuration
-
-                        updatedTrial =
-                            { currentTrial
-                            | rocketY = dy
-                            , status = Finished (dy <= 2.0)
-                            }
+                        newData = { trialData | currentTime = newTime }
                     in
                         ( { state
-                          | currentTrial = updatedTrial
-                          , debugLog = ("StepRocket [position="++fromFloat dy++"]")::state.debugLog
+                          | currentTrial = Launched newData
+                          , debugLog =
+                                ("StepRocket [time="++(fromInt <| posixToMillis newTime)++"]")::state.debugLog
                           }
-                        , if updatedTrial.status == Finished False then
-                            Task.perform (\_ -> MakeTrial) (Process.sleep state.params.iti)
-                        else
-                            Cmd.none
+                        , Cmd.none
                         )
 
-                Launching ->
-                    let
-                        dt = toFloat
-                            <| (Time.posixToMillis currentTime)
-                            - (Time.posixToMillis currentTrial.launchTime)
-
-                        dy = dt / state.params.flightDuration
-
-                        slack = state.params.targetDuration / 2
-
-                        updatedTrial =
-                            if dy >= 1.0 then
-                                finishTrial currentTime slack currentTrial
-                            else
-                                { currentTrial
-                                | rocketY = dy
-                                }
-                    in
-                        case updatedTrial.status of
-                            Launching ->
-                                ( { state
-                                  | currentTrial = updatedTrial
-                                  , debugLog = ("StepRocket [position="++fromFloat dy++"]")::state.debugLog
-                                  }
-                                , Cmd.none
-                                )
-
-                            Finished keepFlying ->
-                                ( { state
-                                  | currentTrial = updatedTrial
-                                  , results = state.results ++ [updatedTrial]
-                                  , debugLog = ("finishTrial "++statusToString updatedTrial)::state.debugLog
-                                  }
-                                , if keepFlying then
-                                    Cmd.none
-                                else
-                                    Task.perform (\_ -> MakeTrial) (Process.sleep state.params.iti)
-                                )
-
-                            _ -> (state, Cmd.none) -- Should never be reached
-
                 _ -> (state, Cmd.none)
+--                    let
+--                        dt = toFloat
+--                            <| (posixToMillis currentTime)
+--                            - (posixToMillis currentTrial.launchTime)
+--
+--                        dy = dt / params.flightDuration
+--
+--                        updatedTrial =
+--                            { currentTrial
+--                            | rocketYFrac = dy
+--                            }
+--                    in
+--                        ( { state
+--                          | currentTrial = updatedTrial
+--                          , debugLog = ("StepRocket [position="++fromFloat dy++"]")::state.debugLog
+--                          }
+--                        , Cmd.none
+--                        )
+
+--                Launching ->
+--                    let
+--                        dt = toFloat
+--                            <| (posixToMillis currentTime)
+--                            - (posixToMillis currentTrial.launchTime)
+--
+--                        dy = dt / params.flightDuration
+--
+--                        slack = params.targetDuration / 2
+--
+--                        updatedTrial =
+--                            if dy >= 1.0 then
+--                                finishTrial currentTime slack currentTrial
+--                            else
+--                                { currentTrial
+--                                | rocketYFrac = dy
+--                                }
+--                    in
+--                        case updatedTrial.status of
+--                            Launching ->
+--                                ( { state
+--                                  | currentTrial = updatedTrial
+--                                  , debugLog = ("StepRocket [position="++fromFloat dy++"]")::state.debugLog
+--                                  }
+--                                , Cmd.none
+--                                )
+--
+--                            Finished keepFlying ->
+--                                ( { state
+--                                  | currentTrial = updatedTrial
+--                                  , results = state.results ++ [updatedTrial]
+--                                  , debugLog = ("finishTrial "++statusToString updatedTrial)::state.debugLog
+--                                  }
+--                                , if keepFlying then
+--                                    Cmd.none
+--                                else
+--                                    Task.perform (\_ -> MakeTrial) (Process.sleep params.iti)
+--                                )
+--
+--                            _ -> (state, Cmd.none) -- Should never be reached
+--
+--                _ -> (state, Cmd.none)
 
         HeightChanged h ->
             let
-                newWidth = (toFloat h) * state.params.aspectRatio
+                newWidth = (toFloat h) * params.aspectRatio
                 newHeight = toFloat h
             in
             ( { state
@@ -509,45 +706,72 @@ updateExperimentState msg ({currentTrial} as state) =
             , Cmd.none
             )
 
-        NoOp ->
+        SaveResults ->
+            ( state
+            , Download.string
+                ("modelUncertainty_session="
+                ++ case state.sessionType of
+                        Train -> "train"
+                        Test -> "test"
+                )
+                "text/csv"
+                (trials2Csv state.results)
+            )
+
+        _ ->
             ( state, Cmd.none )
 
 
-newTrial : Float -> Trial
-newTrial x =
-    { startTime = Time.millisToPosix -1
-    , launchTime = Time.millisToPosix -1
-    , arrivalTime = Time.millisToPosix -1
-    , initialDelay = -1
-    , xFrac = x
-    , profile = Constant
-    , error = -1
-    , result = False
-    , status = Idle
-    , rocketY = 0
-    }
+trials2Csv : List TrialData -> String
+trials2Csv list =
+    case list of
+        [] -> ""
+
+        tr::trs ->
+            String.join
+                ","
+                [ fromFloat tr.xFrac
+                , fromFloat <| duration (Launched tr)
+                , fromInt
+                    <| (posixToMillis tr.launchTime)
+                    + (round params.flightDuration)
+                    - (posixToMillis tr.startTime)
+                ]
 
 
-prepareTrial : Float -> Trial -> Trial
-prepareTrial delay trial =
-    case trial.status of
-        Idle ->
-            { trial
-            | initialDelay = delay
-            , status = Waiting
-            }
-
-        _ -> trial
+newTrial : Profile -> Float -> Trial
+newTrial profile x =
+    Idle
+        { xFrac = x
+        , profile = profile
+        }
 
 
-startTrial : Posix -> Trial -> Trial
-startTrial time trial =
-    case trial.status of
-        Waiting ->
-            { trial
-            | startTime = time
-            , status = Launchable
-            }
+--prepareTrial : Float -> Trial -> Trial
+--prepareTrial delay trial =
+--    case trial of
+--        Idle ->
+--            { trial
+--            | initialDelay = delay
+--            , status = Waiting
+--            }
+--
+--        _ -> trial
+
+
+startTrial : Float -> Posix -> Trial -> Trial
+startTrial delay time trial =
+    case trial of
+        Idle oldData ->
+            let
+                newData = 
+                    { xFrac = oldData.xFrac
+                    , profile = oldData.profile
+                    , initialDelay = delay
+                    , startTime = time
+                    }
+            in
+                Launchable newData
 
         _ ->
             trial
@@ -555,69 +779,87 @@ startTrial time trial =
 
 launchTrial : Posix -> Trial -> Trial
 launchTrial time trial =
-    case trial.status of
-        Launchable ->
-            { trial
-            | launchTime = time
-            , status = Launching
-            }
-
-        _ -> trial
-
-
-finishTrial : Posix -> Float -> Trial -> Trial
-finishTrial arrivalTime slack trial =
-    case trial.status of
-        Launching ->
+    case trial of
+        Launchable oldData ->
             let
-                duration = Time.posixToMillis arrivalTime - Time.posixToMillis trial.startTime
-                error = toFloat duration - (intendedDuration trial)
-                result = (abs error) <= slack
+                newData =
+                    { xFrac = oldData.xFrac
+                    , profile = oldData.profile
+                    , initialDelay = oldData.initialDelay
+                    , startTime = oldData.startTime
+                    , currentTime = time
+                    , launchTime = time
+                    }
             in
-                { trial
-                | arrivalTime = arrivalTime
-                , status = Finished (not result)
-                , error = error
-                , result = result
-                , rocketY =
-                    if result then
-                        1.0
-                    else
-                        trial.rocketY
-                }
+                Launched newData
 
         _ -> trial
 
 
-intendedDuration : Trial -> Float
-intendedDuration trial =
-    case trial.profile of
-        Constant -> 600.0
+--finishTrial : Posix -> Trial -> Trial
+--finishTrial launchTime trial =
+--    case trial.status of
+--        Launching ->
+--            let
+--                duration = posixToMillis arrivalTime - posixToMillis trial.startTime
+--                error = toFloat duration - (duration trial.profile trial.xFrac)
+--                result = (abs error) <= slack
+--            in
+--                { trial
+--                | arrivalTime = arrivalTime
+--                , status = Finished (not result)
+--                , error = error
+--                , result = result
+--                , rocketYFrac =
+--                    if result then
+--                        1.0
+--                    else
+--                        trial.rocketYFrac
+--                }
+--
+--        _ -> trial
 
-        Linear -> 600.0 + (2200.0 - 600.0) * trial.xFrac
+error : TrialData -> Int
+error trialData =
+    (posixToMillis <| endTime trialData) - (posixToMillis <| arrivalTime trialData)
 
-        Quadratic -> -3200.0 * trial.xFrac^2 + 4800 * trial.xFrac + 600.0
+
+result : TrialData -> Bool
+result trialData =
+    (abs <| error trialData) <= (round <| params.targetDuration / 2)
 
 
-intendedArrivalTime : Trial -> Maybe Posix
-intendedArrivalTime ({startTime} as trial) =
+arrivalTime : TrialData -> Posix
+arrivalTime trial =
+    millisToPosix <| (round params.flightDuration) + (posixToMillis trial.launchTime)
+
+
+duration : Trial -> Float
+duration trial =
     let
-        st =
-            case trial.status of
-                Launchable ->
-                    Just startTime
-                Launching ->
-                    Just startTime
-                Finished _ ->
-                    Just startTime
-                _ ->
-                    Nothing
+        (profile, xFrac) =
+            case trial of
+                Idle data -> (data.profile, data.xFrac)
+                Launchable data -> (data.profile, data.xFrac)
+                Launched data -> (data.profile, data.xFrac)
     in
-        case st of
-            Just t ->
-                Just <| Time.millisToPosix <| Time.posixToMillis t + (round <| intendedDuration trial)
-            Nothing ->
-                Nothing
+    case profile of
+        Constant -> 1200.0
+
+        Linear -> 1725.0 - 1050 * xFrac
+
+        Quadratic -> -3200.0 * xFrac^2 + 4800 * xFrac + 600.0
+
+
+endTime : TrialData -> Posix
+endTime trialData =
+    millisToPosix
+        <| (round <| duration (Launched trialData)) + (posixToMillis trialData.startTime)
+
+
+hasEnded : TrialData -> Bool
+hasEnded trialData =
+    (posixToMillis trialData.currentTime) >= (posixToMillis <| endTime trialData)
 
 
 -- SUBSCRIPTIONS
@@ -635,11 +877,12 @@ rocketAnimationSub : ProgramState -> Sub Msg
 rocketAnimationSub programState =
     case programState of
         Running ({currentTrial} as state) ->
-            case currentTrial.status of
-                Launching ->
-                    onAnimationFrame StepRocket
-                Finished True ->
-                    onAnimationFrame StepRocket
+            case currentTrial of
+                Launched trialData ->
+                    if (not <| hasEnded trialData) then
+                        onAnimationFrame StepRocket
+                    else
+                        Sub.none
                 _ ->
                     Sub.none
         _ ->
@@ -675,8 +918,8 @@ view programState =
         , Background.color background
         ]
         ( case programState of
-            WelcomeState  doDebug debugLog ->
-                viewWelcome doDebug debugLog
+            Initializing state ->
+                viewWelcome state
 
             Running state ->
                 row
@@ -750,13 +993,13 @@ viewDebugEntries log =
             text msg :: viewDebugEntries msgs
 
 
-viewWelcome : Bool -> List String -> Element Msg
-viewWelcome doDebug debugLog = 
+viewWelcome : SetupState -> Element Msg
+viewWelcome state = 
     row
         [ width fill
         , height fill
         ]
-        [ viewDebugLog doDebug debugLog
+        [ viewDebugLog state.debug state.debugLog
         , column
             [ centerX
             , centerY
@@ -768,78 +1011,105 @@ viewWelcome doDebug debugLog =
             , el
                 [ centerX
                 , Font.light
-                , Font.size 32
+                , Font.size 50
                 -- , Font.variant Font.smallCaps
                 ]
                <| text <| "the model uncertainty experiment"
-            , heightFillerW 1
+            , heightFillerW 2
+            , el
+                [ centerX ]
+                <| text "session type"
             , row
                 [ centerX
                 , alignBottom
-                , spacing 85
-                , padding 25
+                , spacing 30
+                , padding 20
                 ]
-                [ button
-                   [ Border.width 1
-                   , Border.color grey
-                   , padding 5
-                   , Font.semiBold
-                   ]
-                   { onPress = Just MakeTrial
-                   , label = text "Start"
-                   }
+                [  el 
+                    ( [ onClick (SetSessionType Train)
+                      ]
+                      ++ case state.sessionType of
+                            Test ->
+                                [ Font.light
+                                ]
+                            Train ->
+                                [ Font.heavy
+                                ]
+                    )
+                    <| text "Train"
+                , el
+                    [ height <| px 70
+                    , Border.width 1
+                    ]
+                    none
+                , el
+                    ( [ onClick (SetSessionType Test)
+                      ]
+                      ++ case state.sessionType of
+                            Test ->
+                                [ Font.heavy
+                                ]
+                            Train ->
+                                [ Font.light
+                                ]
+                    )
+                    <| text "Test"
                 ]
-            , heightFillerW 2
+            , row
+                [ height <| fillPortion 3
+                , centerX
+                , spacing 20
+                ]
+                [ text "press Space to start"
+                ]
             ]
         , column [width fill] []
         ]
 
-
 drawScreen : ExperimentState -> Element Msg
 drawScreen state = 
-    let 
-        -- screenWidth = 960
-        screenWidth = state.width
-        -- screenHeight = 740
-        screenHeight = state.height
-    in
-        el
-            [ centerX
-            , centerY
+    el
+        [ centerX
+        , centerY
+        ]
+        <| html <| svg
+            [ SA.width <| fromFloat state.width
+            , SA.height <| fromFloat state.height
+            , SA.viewBox
+                <| String.join " "
+                    ( List.map fromFloat
+                        [ 0
+                        , 0
+                        , state.width
+                        , state.height
+                        ]
+                    )
+            , SA.fill "rgb(51,51,51)"
+            -- , centerX
             ]
-            <| html <| svg
-                [ SA.width <| fromFloat screenWidth
-                , SA.height <| fromFloat screenHeight
-                , SA.viewBox <| "0 0 " ++ fromFloat screenWidth ++ " " ++ fromFloat screenHeight
-                , SA.fill "rgb(51,51,51)"
-                -- , centerX
+            <| Svg.rect
+                [SA.width <| fromFloat state.width
+                , SA.height <| fromFloat state.height
                 ]
-                <| Svg.rect
-                    [SA.width <| fromFloat screenWidth
-                    , SA.height <| fromFloat screenHeight
-                    ]
-                    [Svg.text "foo"]
-                :: drawCue state
-                ++ drawFeedback state
-                ++ drawTarget state
-                ++ drawRocket state
+                [Svg.text "foo"]
+            :: drawCue state
+            ++ drawFeedback state
+            ++ drawTarget state
+            ++ drawRocket state
 
 
 drawRocket : ExperimentState -> List (Svg Msg)
 drawRocket ({currentTrial} as state) =
-    let
-        rocket =
-            { x = state.currentTrial.xFrac * state.width
-            , y = getRocketY currentTrial.rocketY state
-            , r = getRocketRadius state
-            }
-    in
-        case state.currentTrial.status of
-            Launching ->
-                R.view rocket
-
-            Finished _ ->
-                R.view rocket
+        case state.currentTrial of
+            Launched trialData ->
+                let
+                    rocket =
+                        { x = trialData.xFrac * state.width
+                        , y = getRocketY trialData state
+                        , r = getRocketRadius state
+                        }
+                in
+                    R.view rocket
 
             _ -> []
 
@@ -887,45 +1157,49 @@ drawTarget state =
 
 drawFeedback : ExperimentState -> List (Svg Msg)
 drawFeedback ({currentTrial} as state) =
-        case currentTrial.status of
-            Finished False ->
-                if currentTrial.result then
-                    Svg.polyline
-                        [ SA.points <| pointsToString <|
-                            makeCheckmarkPolygonPoints (state.width/2, state.height/2) (getFeedbackSize state)
-                        , SA.stroke "rgb(0,255,0)"
-                        , SA.strokeWidth <| fromFloat <| (getFeedbackSize state) / 4
-                        ]
-                        []
-                    :: []
+        case currentTrial of
+            Launched trialData ->
+                if hasEnded trialData then
+                    if (result trialData) then
+                        Svg.polyline
+                            [ SA.points <| pointsToString <|
+                                makeCheckmarkPolygonPoints (state.width/2, state.height/2) (getFeedbackSize state)
+                            , SA.stroke "rgb(0,255,0)"
+                            , SA.strokeWidth <| fromFloat <| (getFeedbackSize state) / 4
+                            ]
+                            []
+                        :: []
+                    else
+                        let
+                            --err = fromInt <| abs <| round currentTrial.error
+                            suffix =
+                               if error trialData < 0 then
+                                   "late"
+                               else
+                                   "early"
+                            size = getFeedbackSize state
+                        in
+                        Svg.polyline
+                            [ SA.points <| pointsToString <|
+                                makeCrossPolygonPoints (state.width/2, state.height/2) size
+                            , SA.stroke "rgb(255,0,0)"
+                            , SA.strokeWidth <| fromFloat <| size / 4
+                            ]
+                            []
+                        :: Svg.text_
+                                [ SA.x <| fromFloat (state.width/2 - size * 0.70)
+                                , SA.y <| fromFloat (state.height/2 + 1.5 * size)
+                                , SA.fontFamily "Lato heavy"
+                                , SA.fontSize <| fromFloat (size * 0.4)
+                                , SA.fill "rgb(255,0,0)"
+                                --, fontStyle "italic"
+                                ]
+                                [ Svg.text <| "too " ++ suffix
+                                --Svg.text <| err ++ " ms too " ++ suffix
+                                ]
+                        :: []
                 else
-                    let
-                        err = fromInt <| abs <| round currentTrial.error
-                        suffix =
-                           if currentTrial.error < 0 then
-                               "early"
-                           else
-                               "late"
-                        size = getFeedbackSize state
-                    in
-                    Svg.polyline
-                        [ SA.points <| pointsToString <|
-                            makeCrossPolygonPoints (state.width/2, state.height/2) size
-                        , SA.stroke "rgb(255,0,0)"
-                        , SA.strokeWidth <| fromFloat <| size / 4
-                        ]
-                        []
-                    :: Svg.text_
-                            [ SA.x <| fromFloat (state.width/2 - size * 1.4)
-                            , SA.y <| fromFloat (state.height/2 + 1.5 * size)
-                            , SA.fontFamily "Lato light"
-                            , SA.fontSize <| fromFloat (size * 0.4)
-                            , SA.fill "rgb(255,0,0)"
-                            --, fontStyle "italic"
-                            ]
-                            [ Svg.text <| err ++ " ms too " ++ suffix
-                            ]
-                    :: []
+                    []
 
             _ ->
                 []
@@ -951,8 +1225,15 @@ makeCheckmarkPolygonPoints (x,y) w =
 
 
 getX : ExperimentState -> Float
-getX state =
-    state.currentTrial.xFrac * state.width
+getX ({currentTrial} as state) =
+    let 
+        xFrac =
+            case currentTrial of
+                Idle data -> data.xFrac
+                Launchable data -> data.xFrac
+                Launched data -> data.xFrac
+    in
+        xFrac * state.width
 
 
 getCueX : ExperimentState -> Float
@@ -962,30 +1243,36 @@ getCueX state =
 
 getStartY : ExperimentState -> Float
 getStartY state =
-    (1 - state.params.startYFrac) * state.height
+    (1 - params.startYFrac) * state.height
 
 
 getTargetY : ExperimentState -> Float
 getTargetY state =
-    (1 - state.params.targetYFrac) * state.height
+    (1 - params.targetYFrac) * state.height
 
 
-getRocketY : Float -> ExperimentState -> Float
-getRocketY y state =
+getRocketY : TrialData -> ExperimentState -> Float
+getRocketY trialData state =
     let
-        flightDist = (state.params.targetYFrac - state.params.startYFrac)
+        dt = toFloat
+            <| (posixToMillis trialData.currentTime)
+            - (posixToMillis trialData.launchTime)
+
+        dy = dt / params.flightDuration
+
+        flightDist = (params.targetYFrac - params.startYFrac)
     in
-        state.height * (1 - (state.params.startYFrac + flightDist * y))
+        state.height * (1 - (params.startYFrac + flightDist * dy))
 
 
 getRocketRadius : ExperimentState -> Float
 getRocketRadius state =
-    state.params.rocketSizeFrac * state.height
+    params.rocketSizeFrac * state.height
 
 
 getCueWidth : ExperimentState -> Float
 getCueWidth state =
-    state.params.cueWidthFrac * state.height
+    params.cueWidthFrac * state.height
 
 
 getCueHeight : ExperimentState -> Float
@@ -995,12 +1282,12 @@ getCueHeight state =
 
 getTargetSize : ExperimentState -> Float
 getTargetSize state =
-    state.params.targetSizeFrac * state.height
+    params.targetSizeFrac * state.height
 
 
 getFeedbackSize : ExperimentState -> Float
 getFeedbackSize state =
-    state.params.feedbackSizeFrac * state.height
+    params.feedbackSizeFrac * state.height
 
 
 heightFillerW weight =
@@ -1013,6 +1300,8 @@ heightFillerW weight =
 background = rgb 0.2 0.2 0.2
 grey = rgb 0.6 0.6 0.6
 lightgrey = rgb 0.8 0.8 0.8
+
+
 
 
 propertySlider : (Float,Float) -> String -> Float -> (Float -> Msg) -> Element Msg
@@ -1061,7 +1350,7 @@ menuButton buttonColor attrs msg =
     in
         column
             ( [ padding <| 2 * radius
-              , spacing radius
+              , spacing <| round <| 0.5 * radius
               , onClick msg
               ]
               ++ attrs
@@ -1097,7 +1386,7 @@ menuPanel state =
                             , Font.light
                             ]
                             <| text "Menu"
-                            , menuButton background [alignRight] MenuClose
+                            , menuButton background [alignRight, alignTop ] MenuClose
                         ]
                     , column
                         [ padding 15
@@ -1120,7 +1409,7 @@ menuPanel state =
                             }
                         , button
                             [centerX]
-                            { onPress = Nothing
+                            { onPress = Just SaveResults
                             , label = text "Save"
                             }
                         , el
@@ -1148,7 +1437,7 @@ menuPanel state =
                                 ]
                                 [ text
                                     <| (fromInt (trialIdx state))
-                                    ++ " of " ++ (fromInt state.params.nTrials)
+                                    ++ " of " ++ (fromInt <| nTrials state.sessionType)
                                 , text "##%"
                                 ]
                             ]

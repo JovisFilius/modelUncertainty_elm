@@ -24,6 +24,7 @@ import Element as E exposing
 import Element.Border as Border
 import Element.Background as Background
 import Element.Events exposing (onClick)
+import Element.Input as I
 
 import String exposing (fromInt, fromFloat)
 import Random
@@ -31,15 +32,18 @@ import Time exposing (Posix, now)
 import Task exposing (perform, andThen)
 import Process
 
+import File.Download as Download
+
 
 
 -- MAIN
 
 
-main = Browser.sandbox 
-        { init = False
+main = Browser.element 
+        { init = init
         , update = update
         , view = view
+        , subscriptions = subscriptions
         }
 
 
@@ -52,22 +56,47 @@ type alias Model = Bool
     -- }
 
 
+init : () -> (Model, Cmd Msg)
+init _ =
+    ( False
+    , Cmd.none
+    )
+
+
 
 -- UPDATE
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
         MenuOpen ->
-            True
+            ( True
+            , Cmd.none
+            )
         MenuClose ->
-            False
+            ( False
+            , Cmd.none
+            )
+        Download ->
+            ( model
+            , Download.string "foo" "text/csv" "foo"
+            )
+            
 
 
 type Msg
     = MenuOpen
     | MenuClose
+    | Download
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model = Sub.none
 
 
 
@@ -115,8 +144,15 @@ view model =
                     [ text "foo"
                     ]
                 ]
-            , el
-                [centerX, centerY] <| E.text (if model then "menu open" else "menu closed")
+            , column
+                [centerX, centerY] 
+                [ E.text (if model then "menu open" else "menu closed")
+                , I.button
+                    []
+                    { label = E.text "download foo"
+                    , onPress = Just Download
+                    }
+                ]
             , column
                 [ E.alignRight
                 , E.alignTop

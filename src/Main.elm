@@ -955,11 +955,7 @@ view programState =
                         [ width fill
                         , height fill
                         ]
-                        [ el
-                            [ padding 12
-                            , alignBottom
-                            ]
-                            <| text "score:"
+                        [
                         ]
                     ]
         )
@@ -1075,6 +1071,13 @@ drawScreen state =
     el
         [ centerX
         , centerY
+        , inFront
+            <| el
+                [ padding 12
+                , alignTop
+                , centerX
+                ]
+                <| text "score:"
         ]
         <| html <| svg
             [ SA.width <| fromFloat state.width

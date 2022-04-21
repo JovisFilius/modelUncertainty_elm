@@ -3977,7 +3977,7 @@ var _Browser_document = _Debugger_document || F4(function(impl, flagDecoder, deb
 			{
 				_VirtualDom_divertHrefToApp = divertHrefToApp;
 				var doc = view(model);
-				var nextNode = _VirtualDom_node('body')(_List_Nil)(doc.an);
+				var nextNode = _VirtualDom_node('body')(_List_Nil)(doc.ao);
 				var patches = _VirtualDom_diff(currNode, nextNode);
 				bodyNode = _VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);
 				currNode = nextNode;
@@ -5566,7 +5566,7 @@ var $MartinSStewart$elm_audio$Audio$encodeStartSound = F2(
 					_Utils_Tuple2(
 					'bufferId',
 					$MartinSStewart$elm_audio$Audio$encodeBufferId(
-						$MartinSStewart$elm_audio$Audio$audioSourceBufferId(audio_.ah))),
+						$MartinSStewart$elm_audio$Audio$audioSourceBufferId(audio_.ai))),
 					_Utils_Tuple2(
 					'startTime',
 					$MartinSStewart$elm_audio$Audio$encodeTime(
@@ -5617,12 +5617,12 @@ var $MartinSStewart$elm_audio$Audio$flattenAudio = function (audio_) {
 			return $elm$core$List$concat(
 				A2($elm$core$List$map, $MartinSStewart$elm_audio$Audio$flattenAudio, group_));
 		case 1:
-			var source = audio_.a.ah;
+			var source = audio_.a.ai;
 			var startTime = audio_.a.aw;
 			var settings = audio_.a.cj;
 			return _List_fromArray(
 				[
-					{_: settings._, dD: $ianmackenzie$elm_units$Quantity$zero, ad: settings.ad, ah: source, Q: settings.Q, aw: startTime, aA: 1, aZ: _List_Nil}
+					{_: settings._, dD: $ianmackenzie$elm_units$Quantity$zero, ad: settings.ad, ai: source, Q: settings.Q, aw: startTime, aA: 1, aZ: _List_Nil}
 				]);
 		default:
 			var effect = audio_.a;
@@ -6450,7 +6450,7 @@ var $MartinSStewart$elm_audio$Audio$updateAudioState = F2(
 			$elm$core$List$filter,
 			function (_v7) {
 				var a = _v7.b;
-				return _Utils_eq(a.ah, audioGroup.ah) && (_Utils_eq(
+				return _Utils_eq(a.ai, audioGroup.ai) && (_Utils_eq(
 					$MartinSStewart$elm_audio$Audio$audioStartTime(a),
 					$MartinSStewart$elm_audio$Audio$audioStartTime(audioGroup)) && _Utils_eq(a.Q, audioGroup.Q));
 			},
@@ -6675,7 +6675,7 @@ var $MartinSStewart$elm_audio$Audio$initHelper = F3(
 		var audioState = _v1.a;
 		var newNodeGroupIdCounter = _v1.b;
 		var json = _v1.c;
-		var initialModel = {am: audioState, as: newNodeGroupIdCounter, m: $elm$core$Dict$empty, af: 0, ag: $elm$core$Maybe$Nothing, z: $elm$core$Dict$empty, S: model};
+		var initialModel = {an: audioState, at: newNodeGroupIdCounter, m: $elm$core$Dict$empty, af: 0, ah: $elm$core$Maybe$Nothing, z: $elm$core$Dict$empty, S: model};
 		var _v2 = A2($MartinSStewart$elm_audio$Audio$encodeAudioCmd, initialModel, audioCmds);
 		var initialModel2 = _v2.a;
 		var audioRequests = _v2.b;
@@ -6777,7 +6777,7 @@ var $MartinSStewart$elm_audio$Audio$decodeFromJSMsg = A2(
 					$elm$json$Json$Decode$map,
 					function (samplesPerSecond) {
 						return $MartinSStewart$elm_audio$Audio$InitAudioContext(
-							{ag: samplesPerSecond});
+							{ah: samplesPerSecond});
 					},
 					A2($elm$json$Json$Decode$field, 'samplesPerSecond', $elm$json$Json$Decode$int));
 			default:
@@ -6881,15 +6881,15 @@ var $MartinSStewart$elm_audio$Audio$updateHelper = F4(
 		var audioCmds = _v1.c;
 		var _v2 = A3(
 			$MartinSStewart$elm_audio$Audio$diffAudioState,
-			model.as,
-			model.am,
+			model.at,
+			model.an,
 			A2(audioFunc, audioData_, newUserModel));
 		var audioState = _v2.a;
 		var newNodeGroupIdCounter = _v2.b;
 		var json = _v2.c;
 		var newModel = _Utils_update(
 			model,
-			{am: audioState, as: newNodeGroupIdCounter, S: newUserModel});
+			{an: audioState, at: newNodeGroupIdCounter, S: newUserModel});
 		var _v3 = A2($MartinSStewart$elm_audio$Audio$encodeAudioCmd, newModel, audioCmds);
 		var newModel2 = _v3.a;
 		var audioRequests = _v3.b;
@@ -7024,12 +7024,12 @@ var $MartinSStewart$elm_audio$Audio$update = F3(
 						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 					}
 				case 2:
-					var samplesPerSecond = response.a.ag;
+					var samplesPerSecond = response.a.ah;
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
 							{
-								ag: $elm$core$Maybe$Just(samplesPerSecond)
+								ah: $elm$core$Maybe$Just(samplesPerSecond)
 							}),
 						$elm$core$Platform$Cmd$none);
 				default:
@@ -7148,7 +7148,7 @@ var $MartinSStewart$elm_audio$Audio$BasicAudio = function (a) {
 var $MartinSStewart$elm_audio$Audio$audioWithConfig = F3(
 	function (audioSettings, source, startTime) {
 		return $MartinSStewart$elm_audio$Audio$BasicAudio(
-			{cj: audioSettings, ah: source, aw: startTime});
+			{cj: audioSettings, ai: source, aw: startTime});
 	});
 var $MartinSStewart$elm_audio$Audio$audio = F2(
 	function (source, startTime) {
@@ -7491,7 +7491,7 @@ var $author$project$Main$endTime = function (trialData) {
 var $elm$core$Basics$ge = _Utils_ge;
 var $author$project$Main$hasEnded = function (trialData) {
 	return _Utils_cmp(
-		$elm$time$Time$posixToMillis(trialData.ao),
+		$elm$time$Time$posixToMillis(trialData.ap),
 		$elm$time$Time$posixToMillis(
 			$author$project$Main$endTime(trialData))) > -1;
 };
@@ -7683,9 +7683,9 @@ var $author$project$Main$initExperiment = F3(
 					a: state.a,
 					f: 740,
 					aP: false,
-					at: _List_Nil,
+					ag: _List_Nil,
 					o: state.o,
-					ai: false,
+					aj: false,
 					ay: 0,
 					r: 960
 				});
@@ -7718,7 +7718,7 @@ var $author$project$Main$StartTrial = function (a) {
 var $author$project$Main$Waiting = function (a) {
 	return {$: 1, a: a};
 };
-var $author$project$Main$params = {bn: 8 / 6, a6: 35.0, bo: 0.06, bp: 0.055, aL: 300.0, ba: 1500.0, bx: 0.01, aT: 0.25, cm: 1, aj: 150.0, bC: 0.015, bg: 0.75, cq: 1000, cr: 150};
+var $author$project$Main$params = {bn: 8 / 6, a6: 35.0, bo: 0.06, bp: 0.055, aL: 300.0, ba: 1500.0, bx: 0.01, aT: 0.25, cm: 1, ak: 150.0, bC: 0.015, bg: 0.75, cq: 1000, cr: 150};
 var $author$project$Main$arrivalTime = function (trial) {
 	return $elm$time$Time$millisToPosix(
 		$elm$core$Basics$round($author$project$Main$params.aL) + $elm$time$Time$posixToMillis(trial.aN));
@@ -7981,7 +7981,7 @@ var $author$project$Main$launchTrial = F2(
 	function (time, trial) {
 		if (trial.$ === 2) {
 			var oldData = trial.a;
-			var newData = {ao: time, aq: oldData.aq, aN: time, v: oldData.v, aw: oldData.aw, h: oldData.h};
+			var newData = {ap: time, ar: oldData.ar, aN: time, v: oldData.v, aw: oldData.aw, h: oldData.h};
 			return $author$project$Main$Launched(newData);
 		} else {
 			return trial;
@@ -8001,10 +8001,10 @@ var $author$project$Main$result = function (trialData) {
 	return _Utils_cmp(
 		$elm$core$Basics$abs(
 			$author$project$Main$error(trialData)),
-		$elm$core$Basics$round($author$project$Main$params.aj / 2)) < 1;
+		$elm$core$Basics$round($author$project$Main$params.ak / 2)) < 1;
 };
 var $author$project$Main$score = function (err) {
-	var width = $elm$core$Basics$round($author$project$Main$params.aj / 2);
+	var width = $elm$core$Basics$round($author$project$Main$params.ak / 2);
 	var maxPoints = 100;
 	var log = function (x) {
 		var p = 0.00001;
@@ -8025,7 +8025,7 @@ var $author$project$Main$nTrials = function (s) {
 	}
 };
 var $author$project$Main$trialIdx = function (state) {
-	return 1 + $elm$core$List$length(state.at);
+	return 1 + $elm$core$List$length(state.ag);
 };
 var $author$project$Main$sessionComplete = function (state) {
 	return _Utils_cmp(
@@ -8040,7 +8040,7 @@ var $author$project$Main$startTrial = F2(
 	function (time, trial) {
 		if (trial.$ === 1) {
 			var oldData = trial.a;
-			var newData = {aq: oldData.aq, v: oldData.v, aw: time, h: oldData.h};
+			var newData = {ar: oldData.ar, v: oldData.v, aw: time, h: oldData.h};
 			return $author$project$Main$Launchable(newData);
 		} else {
 			return trial;
@@ -8101,11 +8101,11 @@ var $author$project$Main$updateExperimentState = F2(
 									'MakeTrial [trialIdx=' + ($elm$core$String$fromInt(
 										$author$project$Main$trialIdx(state)) + ']'),
 									state.a),
-								at: _Utils_ap(
-									state.at,
+								ag: _Utils_ap(
+									state.ag,
 									_List_fromArray(
 										[trialData])),
-								ai: false,
+								aj: false,
 								ay: state.ay + A2($elm$core$Basics$composeL, $author$project$Main$score, $author$project$Main$error)(trialData)
 							}),
 						A2(
@@ -8187,7 +8187,7 @@ var $author$project$Main$updateExperimentState = F2(
 				var delay = msg.a;
 				if (!currentTrial.$) {
 					var oldData = currentTrial.a;
-					var newData = {aq: delay, v: oldData.v, h: oldData.h};
+					var newData = {ar: delay, v: oldData.v, h: oldData.h};
 					return _Utils_Tuple2(
 						_Utils_update(
 							state,
@@ -8245,7 +8245,7 @@ var $author$project$Main$updateExperimentState = F2(
 								return $elm$time$Time$now;
 							},
 							$elm$core$Process$sleep(
-								($author$project$Main$duration(state.i) - $author$project$Main$params.a6) - ($author$project$Main$params.aj / 2)))));
+								($author$project$Main$duration(state.i) - $author$project$Main$params.a6) - ($author$project$Main$params.ak / 2)))));
 			case 19:
 				var targetTime = msg.a;
 				switch (currentTrial.$) {
@@ -8257,21 +8257,21 @@ var $author$project$Main$updateExperimentState = F2(
 								{
 									a_: $author$project$Main$result(trialData) ? $elm$core$Maybe$Just(targetTime) : $elm$core$Maybe$Nothing,
 									a: A2($elm$core$List$cons, 'ShowTarget', state.a),
-									ai: true
+									aj: true
 								}),
 							A2(
 								$elm$core$Task$perform,
 								function (_v9) {
 									return $author$project$Main$NextTrial;
 								},
-								$elm$core$Process$sleep($author$project$Main$params.aj + $author$project$Main$params.ba)));
+								$elm$core$Process$sleep($author$project$Main$params.ak + $author$project$Main$params.ba)));
 					case 2:
 						return _Utils_Tuple2(
 							_Utils_update(
 								state,
 								{
 									a: A2($elm$core$List$cons, 'ShowTarget', state.a),
-									ai: true
+									aj: true
 								}),
 							$elm$core$Platform$Cmd$none);
 					default:
@@ -8286,12 +8286,12 @@ var $author$project$Main$updateExperimentState = F2(
 							i: A2($author$project$Main$launchTrial, time, state.i),
 							a: A2($elm$core$List$cons, 'LaunchRocket', state.a)
 						}),
-					state.ai ? A2(
+					state.aj ? A2(
 						$elm$core$Task$perform,
 						function (_v10) {
 							return $author$project$Main$NextTrial;
 						},
-						$elm$core$Process$sleep($author$project$Main$params.aj + $author$project$Main$params.ba)) : $elm$core$Platform$Cmd$none);
+						$elm$core$Process$sleep($author$project$Main$params.ak + $author$project$Main$params.ba)) : $elm$core$Platform$Cmd$none);
 			case 18:
 				var newTime = msg.a;
 				if (currentTrial.$ === 3) {
@@ -8302,10 +8302,10 @@ var $author$project$Main$updateExperimentState = F2(
 							$author$project$Main$endTime(trialData))) > 0) ? _Utils_update(
 						trialData,
 						{
-							ao: $author$project$Main$endTime(trialData)
+							ap: $author$project$Main$endTime(trialData)
 						}) : _Utils_update(
 						trialData,
-						{ao: newTime});
+						{ap: newTime});
 					return _Utils_Tuple2(
 						_Utils_update(
 							state,
@@ -8370,7 +8370,7 @@ var $author$project$Main$updateExperimentState = F2(
 							}
 						}(),
 						'text/csv',
-						$author$project$Main$trials2Csv(state.at)));
+						$author$project$Main$trials2Csv(state.ag)));
 			default:
 				return _Utils_Tuple2(state, $elm$core$Platform$Cmd$none);
 		}
@@ -8631,7 +8631,7 @@ var $mdgriffith$elm_ui$Element$createNearby = F2(
 var $mdgriffith$elm_ui$Element$inFront = function (element) {
 	return A2($mdgriffith$elm_ui$Element$createNearby, 4, element);
 };
-var $mdgriffith$elm_ui$Internal$Style$classes = {cA: 'a', bj: 'atv', cC: 'ab', cD: 'cx', cE: 'cy', cF: 'acb', cG: 'accx', cH: 'accy', cI: 'acr', bH: 'al', bI: 'ar', cJ: 'at', bk: 'ah', bl: 'av', cL: 's', cR: 'bh', cS: 'b', cU: 'w7', cW: 'bd', cX: 'bdt', a$: 'bn', cY: 'bs', a0: 'cpe', c2: 'cp', c3: 'cpx', c4: 'cpy', L: 'c', a2: 'ctr', a3: 'cb', a4: 'ccx', M: 'ccy', aG: 'cl', a5: 'cr', c7: 'ct', c8: 'cptr', c9: 'ctxt', dg: 'fcs', bQ: 'focus-within', di: 'fs', dj: 'g', bq: 'hbh', br: 'hc', bT: 'he', bs: 'hf', bU: 'hfp', dl: 'hv', dn: 'ic', dp: 'fr', a9: 'lbl', dr: 'iml', ds: 'imlf', dt: 'imlp', du: 'implw', dv: 'it', dw: 'i', bZ: 'lnk', ar: 'nb', b2: 'notxt', dF: 'ol', dG: 'or', ab: 'oq', dI: 'oh', b5: 'pg', b6: 'p', dJ: 'ppe', dN: 'ui', D: 'r', dP: 'sb', dQ: 'sbx', dR: 'sby', dS: 'sbt', dU: 'e', dW: 'cap', dX: 'sev', d1: 'sk', w: 't', d4: 'tc', d5: 'w8', d6: 'w2', d7: 'w9', d8: 'tj', bh: 'tja', d9: 'tl', ea: 'w3', eb: 'w5', ec: 'w4', ed: 'tr', ee: 'w6', ef: 'w1', eg: 'tun', cp: 'ts', ak: 'clr', em: 'u', bD: 'wc', cx: 'we', bE: 'wf', cy: 'wfp', bF: 'wrp'};
+var $mdgriffith$elm_ui$Internal$Style$classes = {cA: 'a', bj: 'atv', cC: 'ab', cD: 'cx', cE: 'cy', cF: 'acb', cG: 'accx', cH: 'accy', cI: 'acr', bH: 'al', bI: 'ar', cJ: 'at', bk: 'ah', bl: 'av', cL: 's', cR: 'bh', cS: 'b', cU: 'w7', cW: 'bd', cX: 'bdt', a$: 'bn', cY: 'bs', a0: 'cpe', c2: 'cp', c3: 'cpx', c4: 'cpy', L: 'c', a2: 'ctr', a3: 'cb', a4: 'ccx', M: 'ccy', aG: 'cl', a5: 'cr', c7: 'ct', c8: 'cptr', c9: 'ctxt', dg: 'fcs', bQ: 'focus-within', di: 'fs', dj: 'g', bq: 'hbh', br: 'hc', bT: 'he', bs: 'hf', bU: 'hfp', dl: 'hv', dn: 'ic', dp: 'fr', a9: 'lbl', dr: 'iml', ds: 'imlf', dt: 'imlp', du: 'implw', dv: 'it', dw: 'i', bZ: 'lnk', as: 'nb', b2: 'notxt', dF: 'ol', dG: 'or', ab: 'oq', dI: 'oh', b5: 'pg', b6: 'p', dJ: 'ppe', dN: 'ui', D: 'r', dP: 'sb', dQ: 'sbx', dR: 'sby', dS: 'sbt', dU: 'e', dW: 'cap', dX: 'sev', d1: 'sk', w: 't', d4: 'tc', d5: 'w8', d6: 'w2', d7: 'w9', d8: 'tj', bh: 'tja', d9: 'tl', ea: 'w3', eb: 'w5', ec: 'w4', ed: 'tr', ee: 'w6', ef: 'w1', eg: 'tun', cp: 'ts', al: 'clr', em: 'u', bD: 'wc', cx: 'we', bE: 'wf', cy: 'wfp', bF: 'wrp'};
 var $mdgriffith$elm_ui$Internal$Model$Attr = function (a) {
 	return {$: 1, a: a};
 };
@@ -9521,7 +9521,7 @@ var $mdgriffith$elm_ui$Internal$Style$baseSheet = _List_fromArray(
 					[
 						A2(
 						$mdgriffith$elm_ui$Internal$Style$Descriptor,
-						$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.ar),
+						$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.as),
 						_List_fromArray(
 							[
 								A2($mdgriffith$elm_ui$Internal$Style$Prop, 'position', 'fixed'),
@@ -9531,7 +9531,7 @@ var $mdgriffith$elm_ui$Internal$Style$baseSheet = _List_fromArray(
 			])),
 		A2(
 		$mdgriffith$elm_ui$Internal$Style$Class,
-		$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.ar),
+		$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.as),
 		_List_fromArray(
 			[
 				A2($mdgriffith$elm_ui$Internal$Style$Prop, 'position', 'relative'),
@@ -9773,7 +9773,7 @@ var $mdgriffith$elm_ui$Internal$Style$baseSheet = _List_fromArray(
 					])),
 				A2(
 				$mdgriffith$elm_ui$Internal$Style$Descriptor,
-				$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.ak),
+				$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.al),
 				_List_fromArray(
 					[
 						A2($mdgriffith$elm_ui$Internal$Style$Prop, 'opacity', '0')
@@ -9788,7 +9788,7 @@ var $mdgriffith$elm_ui$Internal$Style$baseSheet = _List_fromArray(
 				A2(
 				$mdgriffith$elm_ui$Internal$Style$Descriptor,
 				$mdgriffith$elm_ui$Internal$Style$dot(
-					_Utils_ap($mdgriffith$elm_ui$Internal$Style$classes.dl, $mdgriffith$elm_ui$Internal$Style$classes.ak)) + ':hover',
+					_Utils_ap($mdgriffith$elm_ui$Internal$Style$classes.dl, $mdgriffith$elm_ui$Internal$Style$classes.al)) + ':hover',
 				_List_fromArray(
 					[
 						A2($mdgriffith$elm_ui$Internal$Style$Prop, 'opacity', '0')
@@ -9804,7 +9804,7 @@ var $mdgriffith$elm_ui$Internal$Style$baseSheet = _List_fromArray(
 				A2(
 				$mdgriffith$elm_ui$Internal$Style$Descriptor,
 				$mdgriffith$elm_ui$Internal$Style$dot(
-					_Utils_ap($mdgriffith$elm_ui$Internal$Style$classes.dg, $mdgriffith$elm_ui$Internal$Style$classes.ak)) + ':focus',
+					_Utils_ap($mdgriffith$elm_ui$Internal$Style$classes.dg, $mdgriffith$elm_ui$Internal$Style$classes.al)) + ':focus',
 				_List_fromArray(
 					[
 						A2($mdgriffith$elm_ui$Internal$Style$Prop, 'opacity', '0')
@@ -9820,7 +9820,7 @@ var $mdgriffith$elm_ui$Internal$Style$baseSheet = _List_fromArray(
 				A2(
 				$mdgriffith$elm_ui$Internal$Style$Descriptor,
 				$mdgriffith$elm_ui$Internal$Style$dot(
-					_Utils_ap($mdgriffith$elm_ui$Internal$Style$classes.bj, $mdgriffith$elm_ui$Internal$Style$classes.ak)) + ':active',
+					_Utils_ap($mdgriffith$elm_ui$Internal$Style$classes.bj, $mdgriffith$elm_ui$Internal$Style$classes.al)) + ':active',
 				_List_fromArray(
 					[
 						A2($mdgriffith$elm_ui$Internal$Style$Prop, 'opacity', '0')
@@ -12625,37 +12625,37 @@ var $mdgriffith$elm_ui$Internal$Model$nearbyElement = F2(
 									$elm$core$String$join,
 									' ',
 									_List_fromArray(
-										[$mdgriffith$elm_ui$Internal$Style$classes.ar, $mdgriffith$elm_ui$Internal$Style$classes.dU, $mdgriffith$elm_ui$Internal$Style$classes.cA]));
+										[$mdgriffith$elm_ui$Internal$Style$classes.as, $mdgriffith$elm_ui$Internal$Style$classes.dU, $mdgriffith$elm_ui$Internal$Style$classes.cA]));
 							case 1:
 								return A2(
 									$elm$core$String$join,
 									' ',
 									_List_fromArray(
-										[$mdgriffith$elm_ui$Internal$Style$classes.ar, $mdgriffith$elm_ui$Internal$Style$classes.dU, $mdgriffith$elm_ui$Internal$Style$classes.cS]));
+										[$mdgriffith$elm_ui$Internal$Style$classes.as, $mdgriffith$elm_ui$Internal$Style$classes.dU, $mdgriffith$elm_ui$Internal$Style$classes.cS]));
 							case 2:
 								return A2(
 									$elm$core$String$join,
 									' ',
 									_List_fromArray(
-										[$mdgriffith$elm_ui$Internal$Style$classes.ar, $mdgriffith$elm_ui$Internal$Style$classes.dU, $mdgriffith$elm_ui$Internal$Style$classes.dG]));
+										[$mdgriffith$elm_ui$Internal$Style$classes.as, $mdgriffith$elm_ui$Internal$Style$classes.dU, $mdgriffith$elm_ui$Internal$Style$classes.dG]));
 							case 3:
 								return A2(
 									$elm$core$String$join,
 									' ',
 									_List_fromArray(
-										[$mdgriffith$elm_ui$Internal$Style$classes.ar, $mdgriffith$elm_ui$Internal$Style$classes.dU, $mdgriffith$elm_ui$Internal$Style$classes.dF]));
+										[$mdgriffith$elm_ui$Internal$Style$classes.as, $mdgriffith$elm_ui$Internal$Style$classes.dU, $mdgriffith$elm_ui$Internal$Style$classes.dF]));
 							case 4:
 								return A2(
 									$elm$core$String$join,
 									' ',
 									_List_fromArray(
-										[$mdgriffith$elm_ui$Internal$Style$classes.ar, $mdgriffith$elm_ui$Internal$Style$classes.dU, $mdgriffith$elm_ui$Internal$Style$classes.dp]));
+										[$mdgriffith$elm_ui$Internal$Style$classes.as, $mdgriffith$elm_ui$Internal$Style$classes.dU, $mdgriffith$elm_ui$Internal$Style$classes.dp]));
 							default:
 								return A2(
 									$elm$core$String$join,
 									' ',
 									_List_fromArray(
-										[$mdgriffith$elm_ui$Internal$Style$classes.ar, $mdgriffith$elm_ui$Internal$Style$classes.dU, $mdgriffith$elm_ui$Internal$Style$classes.cR]));
+										[$mdgriffith$elm_ui$Internal$Style$classes.as, $mdgriffith$elm_ui$Internal$Style$classes.dU, $mdgriffith$elm_ui$Internal$Style$classes.cR]));
 						}
 					}())
 				]),
@@ -14566,6 +14566,16 @@ var $mdgriffith$elm_ui$Element$Font$size = function (i) {
 		$mdgriffith$elm_ui$Internal$Flag$fontSize,
 		$mdgriffith$elm_ui$Internal$Model$FontSize(i));
 };
+var $author$project$Main$successRate = function () {
+	var boolToFloat = function (b) {
+		return b ? 1 : 0;
+	};
+	return A2(
+		$elm$core$Basics$composeL,
+		$elm$core$List$sum,
+		$elm$core$List$map(
+			A2($elm$core$Basics$composeL, boolToFloat, $author$project$Main$result)));
+}();
 var $mdgriffith$elm_ui$Internal$Model$Text = function (a) {
 	return {$: 2, a: a};
 };
@@ -14698,7 +14708,7 @@ var $author$project$Main$menuPanel = function (state) {
 												]),
 											_List_fromArray(
 												[
-													$mdgriffith$elm_ui$Element$text('Trial index:'),
+													$mdgriffith$elm_ui$Element$text('Trials completed:'),
 													$mdgriffith$elm_ui$Element$text('Session performance:')
 												])),
 											A2(
@@ -14713,9 +14723,16 @@ var $author$project$Main$menuPanel = function (state) {
 												[
 													$mdgriffith$elm_ui$Element$text(
 													$elm$core$String$fromInt(
-														$author$project$Main$trialIdx(state)) + (' of ' + $elm$core$String$fromInt(
+														$author$project$Main$trialIdx(state) - 1) + (' of ' + $elm$core$String$fromInt(
 														$author$project$Main$nTrials(state.o)))),
-													$mdgriffith$elm_ui$Element$text('##%')
+													$mdgriffith$elm_ui$Element$text(
+													A2(
+														$elm$core$Basics$composeL,
+														A2(
+															$elm$core$Basics$composeL,
+															A2($elm$core$Basics$composeL, $elm$core$String$fromInt, $elm$core$Basics$round),
+															$elm$core$Basics$mul(100)),
+														$author$project$Main$successRate)(state.ag) + '%')
 												]))
 										]))
 								]))
@@ -14942,7 +14959,7 @@ var $author$project$Main$getRocketRadius = function (state) {
 var $author$project$Main$getRocketY = F2(
 	function (trialData, state) {
 		var flightDist = $author$project$Main$params.bg - $author$project$Main$params.aT;
-		var dt = $elm$time$Time$posixToMillis(trialData.ao) - $elm$time$Time$posixToMillis(trialData.aN);
+		var dt = $elm$time$Time$posixToMillis(trialData.ap) - $elm$time$Time$posixToMillis(trialData.aN);
 		var dy = dt / $author$project$Main$params.aL;
 		return state.f * (1 - ($author$project$Main$params.aT + (flightDist * dy)));
 	});
@@ -15025,7 +15042,7 @@ var $author$project$Main$getTargetY = function (state) {
 };
 var $elm$svg$Svg$polygon = $elm$svg$Svg$trustedNode('polygon');
 var $author$project$Main$drawTarget = function (state) {
-	return state.ai ? A2(
+	return state.aj ? A2(
 		$elm$core$List$cons,
 		A2(
 			$elm$svg$Svg$polygon,

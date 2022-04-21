@@ -845,6 +845,14 @@ result trialData =
     (abs <| error trialData) <= (round <| params.targetDuration / 2)
 
 
+successRate : List TrialData -> number
+successRate =
+    let
+        boolToFloat b = if b then 1 else 0
+    in
+        List.sum << List.map (boolToFloat << result)
+
+
 score : Int -> Int
 score err =
     let
@@ -1546,7 +1554,6 @@ menuButton buttonColor attrs msg =
             <| List.repeat 3 (dot radius)
 
 
--- menuPanel : List (Attribute msg) -> List (Element msg) -> Element msg -> Element msg
 menuPanel : ExperimentState -> Element Msg
 menuPanel state =
     if state.menu then
@@ -1615,7 +1622,7 @@ menuPanel state =
                                 , Font.light
                                 , spacing 15
                                 ]
-                                [ text "Trial index:"
+                                [ text "Trials completed:"
                                 , text "Session performance:"
                                 ]
                             , column
@@ -1624,9 +1631,10 @@ menuPanel state =
                                 , spacing 15
                                 ]
                                 [ text
-                                    <| (fromInt (trialIdx state))
+                                    <| (fromInt <| (trialIdx state) - 1)
                                     ++ " of " ++ (fromInt <| nTrials state.sessionType)
-                                , text "##%"
+                                , text
+                                    <| ((fromInt << round << (*) 100 << successRate) state.results) ++ "%"
                                 ]
                             ]
                         ]

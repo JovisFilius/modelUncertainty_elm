@@ -890,7 +890,7 @@ duration trial =
 
         Linear -> 1725.0 - 1050 * xFrac
 
-        Quadratic -> -3200.0 * xFrac^2 + 4800 * xFrac + 600.0
+        Quadratic -> -4960 * xFrac^2 + 4960 * xFrac + 560
 
 
 endTime : TrialData -> Posix

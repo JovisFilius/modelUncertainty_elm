@@ -7479,7 +7479,7 @@ var $author$project$Main$duration = function (trial) {
 		case 1:
 			return 1725.0 - (1050 * xFrac);
 		default:
-			return (((-3200.0) * A2($elm$core$Basics$pow, xFrac, 2)) + (4800 * xFrac)) + 600.0;
+			return (((-4960) * A2($elm$core$Basics$pow, xFrac, 2)) + (4960 * xFrac)) + 560;
 	}
 };
 var $author$project$Main$endTime = function (trialData) {

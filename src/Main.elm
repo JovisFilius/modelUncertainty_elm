@@ -685,6 +685,14 @@ updateExperimentState msg ({currentTrial} as state) =
                         (Process.sleep <| params.targetDuration + params.iti)
                     )
 
+                Launchable _ ->
+                    ( { state
+                      | target = True
+                      , debugLog = "ShowTarget"::state.debugLog
+                      }
+                    , Cmd.none
+                    )
+
                 _ -> (state, Cmd.none)
 
         LaunchRocket time ->
@@ -692,7 +700,12 @@ updateExperimentState msg ({currentTrial} as state) =
               | currentTrial = launchTrial time state.currentTrial
               , debugLog = "LaunchRocket"::state.debugLog
               }
-            , Cmd.none
+            , if state.target then --target is already visible -> start new trial
+                Task.perform
+                    (\_ -> NextTrial)
+                    (Process.sleep <| params.targetDuration + params.iti)
+            else
+                 Cmd.none
             )
 
         StepRocket newTime ->

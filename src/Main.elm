@@ -76,6 +76,8 @@ todo =
             ]
         , Done "Save data when save button is clicked"
         , Do Low "Warn when trying to save an incomplete session"
+        , Done "Save each trial to the Experiment results list when creating a new trial"
+        , Do High "Prompt user to download data at the end of the session"
         ]
     , P "Welcome screen"
             [ Done "Replace button with 'press space to start'"
@@ -431,7 +433,7 @@ type Msg
     | SetDebugging Bool
     | MenuOpen
     | MenuClose
-    | SaveResults
+    | DownloadResults
     | NoOp
 
 
@@ -587,11 +589,16 @@ updateExperimentState msg ({currentTrial} as state) =
             )
 
         TrialEnd ->
-            ( { state
-              | debugLog = "TrialEnd"::state.debugLog
-              }
-            , Task.perform (\_ -> MakeTrial) (Process.sleep params.iti)
-            )
+            case currentTrial of
+                Launched trialData ->
+                    ( { state
+                      | results = state.results ++ [trialData]
+                      , debugLog = "TrialEnd"::state.debugLog
+                      }
+                    , Task.perform (\_ -> MakeTrial) (Process.sleep params.iti)
+                    )
+
+                _ -> (state, Cmd.none)
 
         LaunchRocket time ->
             ( { state
@@ -605,7 +612,12 @@ updateExperimentState msg ({currentTrial} as state) =
             case currentTrial of
                 Launched trialData ->
                     let
-                        newData = { trialData | currentTime = newTime }
+                        newData =
+                            if (posixToMillis newTime)
+                            > (posixToMillis <| endTime trialData) then
+                                { trialData | currentTime = endTime trialData }
+                            else
+                                { trialData | currentTime = newTime }
                     in
                         ( { state
                           | currentTrial = Launched newData
@@ -706,7 +718,7 @@ updateExperimentState msg ({currentTrial} as state) =
             , Cmd.none
             )
 
-        SaveResults ->
+        DownloadResults ->
             ( state
             , Download.string
                 ("modelUncertainty_session="
@@ -928,6 +940,7 @@ view programState =
                     , inFront (menuPanel state)
                     ]
                     [ viewDebugLog state.debug state.debugLog
+                    , vertSeparator
                     , column
                         [ alignLeft
                         , centerY
@@ -937,16 +950,16 @@ view programState =
                         ]
                         [ drawScreen state
                         ]
+                    , vertSeparator
                     , column
                         [ width fill
                         , height fill
                         ]
-                        [ menuButton
-                            lightgrey
-                            [ alignTop
-                            , alignRight
+                        [ el
+                            [ padding 12
+                            , alignBottom
                             ]
-                            MenuOpen
+                            <| text "score:"
                         ]
                     ]
         )
@@ -973,15 +986,6 @@ viewDebugLog doDebug log =
             else
                 none
             )
-        -- , checkbox
-        --     [ alignBottom
-        --     , padding 40
-        --     ]
-        --     { onChange = SetDebugging
-        --     , icon = defaultCheckbox
-        --     , checked = doDebug
-        --     , label = labelRight [] <| text "show debugging trace"
-        --     }
         ]
 
 viewDebugEntries : List String -> List (Element Msg)
@@ -1189,7 +1193,7 @@ drawFeedback ({currentTrial} as state) =
                         :: Svg.text_
                                 [ SA.x <| fromFloat (state.width/2 - size * 0.70)
                                 , SA.y <| fromFloat (state.height/2 + 1.5 * size)
-                                , SA.fontFamily "Lato heavy"
+                                , SA.fontFamily "Lato"
                                 , SA.fontSize <| fromFloat (size * 0.4)
                                 , SA.fill "rgb(255,0,0)"
                                 --, fontStyle "italic"
@@ -1300,8 +1304,51 @@ heightFillerW weight =
 background = rgb 0.2 0.2 0.2
 grey = rgb 0.6 0.6 0.6
 lightgrey = rgb 0.8 0.8 0.8
+darkgrey = rgb 0.4 0.4 0.4
+
+greytint : Float -> Color
+greytint f =
+    rgb f f f
 
 
+vertSeparator : Element msg
+vertSeparator =
+    let
+        sep : Color -> Element msg
+        sep color =
+            el
+                [ height <| fillPortion 3
+                , Border.widthEach
+                    { bottom=0
+                    , left=0
+                    , right=1
+                    , top=0
+                    }
+                , Border.color color
+                ]
+                none
+
+        tints : List Float
+        tints = [0.25, 0.3, 0.35, 0.4]
+
+        greys : Float -> Float -> Int -> List Float
+        greys start stop n =
+            List.map
+                ((+) start << (/) (toFloat n) << (*) (stop-start) << toFloat)
+                (List.range 1 n)
+            -- [0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25]
+    in
+        column
+            [ height fill
+            ]
+            ( [ el [height <| fillPortion 5] none
+              ]
+              ++ (List.map (sep << greytint) tints)
+              ++ ((List.reverse << List.map (sep << greytint)) tints)
+              -- ++ ((List.reverse << List.map (sep << greytint)) <| greys 0.2 0.8 20)
+              ++ [ el [height <| fillPortion 5] none
+              ]
+            )
 
 
 propertySlider : (Float,Float) -> String -> Float -> (Float -> Msg) -> Element Msg
@@ -1409,7 +1456,7 @@ menuPanel state =
                             }
                         , button
                             [centerX]
-                            { onPress = Just SaveResults
+                            { onPress = Just DownloadResults
                             , label = text "Save"
                             }
                         , el
@@ -1446,4 +1493,9 @@ menuPanel state =
             ]
             none
     else
-        none
+        menuButton
+            lightgrey
+            [ alignTop
+            , alignRight
+            ]
+            MenuOpen

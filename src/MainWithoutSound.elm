@@ -1,4 +1,4 @@
-port module Main exposing (..)
+module Main exposing (..)
 
 import Browser
 import Browser.Events exposing (onKeyPress, onAnimationFrame, onResize)
@@ -35,16 +35,6 @@ import Task exposing (perform, andThen)
 import Process
 import File.Download as Download
 
-import Json.Decode
-import Json.Encode
-import Audio exposing
-    ( Audio
-    , AudioCmd
-    , AudioData
-    , audio
-    , silence
-    , elementWithAudio
-    )
 
 
 -- TODO
@@ -160,7 +150,7 @@ todo =
                     ]
                 , P "make indicator for trial success"
                     [ Done "Show green checkmark"
-                    , Done "Ring a sound on target hit"
+                    , Do Medium "Ring a sound on target hit"
                     , Done "Show awardeded points"
                     ]
                 ] 
@@ -183,22 +173,13 @@ todo =
 -- MAIN
 
 
-main : Platform.Program () (Audio.Model Msg ProgramState) (Audio.Msg Msg)
 main =
-     Audio.elementWithAudio
-        { init = init
-        , update = update
-        , subscriptions = subscriptions
-        , view = view
-        , audio = renderAudio
-        , audioPort = { toJS = audioPortToJS, fromJS = audioPortFromJS }
-        }
-
-port audioPortToJS : Json.Encode.Value -> Cmd msg
-
-
-port audioPortFromJS : (Json.Decode.Value -> msg) -> Sub msg
-
+     Browser.element
+         { init = init
+         , update = update
+         , subscriptions = subscriptions
+         , view = view
+         }
 
 
 -- MODEL
@@ -214,7 +195,6 @@ type alias SetupState =
     , debugLog : List String
     , sessionType : SessionType
     , showHelp : Bool
-    , beep : Maybe Audio.Source
     }
 
 
@@ -230,24 +210,18 @@ type alias ExperimentState =
         , debug : Bool
         , menu : Bool
         , totalScore : Int
-        , beep : Maybe Audio.Source
-        , beepAt : Maybe Posix
         }
 
 
-init : flags -> (ProgramState, Cmd Msg, AudioCmd Msg)
+init : () -> (ProgramState, Cmd Msg)
 init _ =
     ( Initializing
         { debug = False
         , debugLog = []
         , sessionType = Train
         , showHelp = False
-        , beep = Nothing
         }
     , Cmd.none
-    , Audio.loadAudio
-        SoundLoaded
-            "beep.wav"
     )
 
 viewport2HeightChanged : Viewport -> Msg
@@ -275,8 +249,6 @@ initExperiment programState profile x =
                 , menu = False
                 , sessionType = state.sessionType
                 , totalScore = 0
-                , beep = state.beep
-                , beepAt = Nothing
                 }
 
         _ -> programState
@@ -361,6 +333,10 @@ statusToString trial =
         Waiting _ -> "waiting"
         Launchable _ -> "launchable"
         Launched _ -> "launched"
+--        Finished flying -> "finished [result="
+--                    ++ (if trial.result then "success" else "failure")
+--                    ++ " [err="++fromFloat trial.error ++"]"
+--                    ++ ",stillFlying="++(if flying then "True" else "False")++"]]"
         
 
 type SessionType
@@ -369,10 +345,10 @@ type SessionType
 
 
 nTrials : SessionType -> Int
-nTrials s =
-    case s of
-        Train -> 5--360
-        Test -> 650
+nTrials s = 1
+--    case s of
+--        Train -> 360
+--        Test -> 650
 
 
 sessionComplete : ExperimentState -> Bool
@@ -459,57 +435,41 @@ getModelId iTr sType =
 
 type Msg
     = ShowHelp
-    | SetDebugging Bool
+    | NextTrial
+    | SetSessionType SessionType
+    | SpacePressed
+    | RandomDelay Float
+    | StartTrial Posix
+    | HideCue
+    | ShowTarget
+    | LaunchRocket Posix
+    | StepRocket Posix
+    | RandomProfile Profile
+    | RandomProfileAndX Profile Float
     | HeightChanged Int
+    | Debug String
+    | SetDebugging Bool
     | MenuOpen
     | MenuClose
     | DownloadResults
-    | Debug String
     | NoOp
-    | SoundLoaded (Result Audio.LoadError Audio.Source)
-    | SetSessionType SessionType
-    | SpacePressed
-    | NextTrial
-    | RandomDelay Float
-    | RandomProfile Profile
-    | RandomProfileAndX Profile Float
-    | StartTrial Posix
-    | HideCue
-    | LaunchRocket Posix
-    | StepRocket Posix
-    | ShowTarget Posix
 
 
-update : AudioData -> Msg -> ProgramState -> (ProgramState, Cmd Msg, AudioCmd Msg)
-update _ msg programState =
+update : Msg -> ProgramState -> ( ProgramState, Cmd Msg )
+update msg programState =
     case programState of
         Running state ->
-            (\(newState, cmd) -> (Running newState, cmd, Audio.cmdNone)) <| updateExperimentState msg state
+            (\(newState, cmd) -> (Running newState, cmd)) <| updateExperimentState msg state
 
         Initializing state -> 
             case msg of
                 RandomProfileAndX profile x ->
                     ( initExperiment programState profile x
                     , Task.perform viewport2HeightChanged getViewport
-                    , Audio.cmdNone
                     )
 
-                SoundLoaded soundData ->
-                    case soundData of
-                        Ok sound ->
-                            ( Initializing { state | beep = Just sound }
-                            , Cmd.none
-                            , Audio.cmdNone
-                            )
-
-                        Err _ ->
-                            ( programState
-                            , Cmd.none
-                            , Audio.cmdNone
-                            )
-
                 _ ->
-                    (\(newState, cmd) -> (Initializing newState, cmd, Audio.cmdNone)) <| updateSetupState msg state
+                    (\(newState, cmd) -> (Initializing newState, cmd)) <| updateSetupState msg state
 
 
 updateSetupState : Msg -> SetupState -> (SetupState, Cmd Msg)
@@ -563,6 +523,26 @@ updateExperimentState msg ({currentTrial} as state) =
             ( { state | debugLog = state.debugLog ++ [str] }
             , Cmd.none
             )
+
+--        TrialEnd ->
+--            case currentTrial of
+--                Launched trialData ->
+--                    let
+--                        nextMsg = 
+--                            if trialIdx state < nTrials state.sessionType then
+--                                MakeTrial
+--                            else
+--                                SessionEnd
+--                    in
+--                        ( { state
+--                          | results = state.results ++ [trialData]
+--                          , totalScore = state.totalScore + (score << error) trialData
+--                          , debugLog = "TrialEnd"::state.debugLog
+--                          }
+--                        , Task.perform (\_ -> nextMsg) (Process.sleep params.iti)
+--                        )
+--
+--                _ -> (state, Cmd.none)
 
         NextTrial ->
             case currentTrial of
@@ -658,34 +638,23 @@ updateExperimentState msg ({currentTrial} as state) =
               , debugLog = "HideCue"::state.debugLog
               }
             , Task.perform
-                ShowTarget
-                (Process.sleep
-                    ( (duration state.currentTrial)
-                      - params.cueDuration
-                      - params.targetDuration / 2
-                    )
-                    |> andThen (\_ -> now)
+                (\_ -> ShowTarget)
+                (Process.sleep <|
+                    (duration state.currentTrial)
+                    - params.cueDuration
+                    - params.targetDuration / 2
                 )
             )
 
-        ShowTarget targetTime ->
-            case currentTrial of
-                Launched trialData ->
-                    ( { state
-                      | target = True
-                      , beepAt = 
-                            if result trialData then
-                                Just targetTime
-                            else
-                                Nothing
-                      , debugLog = "ShowTarget"::state.debugLog
-                      }
-                    , Task.perform
-                        (\_ -> NextTrial)
-                        (Process.sleep <| params.targetDuration + params.iti)
-                    )
-
-                _ -> (state, Cmd.none)
+        ShowTarget ->
+            ( { state
+              | target = True
+              , debugLog = "ShowTarget"::state.debugLog
+              }
+            , Task.perform
+                (\_ -> NextTrial)
+                (Process.sleep <| params.targetDuration + params.iti)
+            )
 
         LaunchRocket time ->
             ( { state
@@ -894,8 +863,8 @@ hasEnded trialData =
 -- SUBSCRIPTIONS
 
 
-subscriptions : AudioData -> ProgramState -> Sub Msg
-subscriptions _ programState =
+subscriptions : ProgramState -> Sub Msg
+subscriptions programState =
     Sub.batch
         [ rocketAnimationSub programState
         , onKeyPress keyDecoder
@@ -936,8 +905,8 @@ filterSpace str =
 -- VIEW
 
 
-view : AudioData -> ProgramState -> Html Msg
-view _ programState =
+view : ProgramState -> Html Msg
+view programState =
     layout
         [ Font.family
             [ Font.typeface "Lato"
@@ -1627,24 +1596,3 @@ menuPanel state =
             , alignRight
             ]
             MenuOpen
-
-
-
--- AUDIO
-
-
-renderAudio : AudioData -> ProgramState -> Audio
-renderAudio _ programState = 
-    case programState of
-        Running state ->
-            case state.beep of
-                Just beepSound ->
-                    case state.beepAt of
-                        Nothing -> silence
-                        Just time ->
-                            audio beepSound time
-
-                Nothing -> silence
-
-        _ ->
-            silence

@@ -68,7 +68,7 @@ todo =
         [ Done "overlay elements over other elements (Element.inFront, Element.behindContent)"
         , Done "Show menu dots in upper right corner"
         , Done "Show save button in side menu"
-        , Do Low "Show success percentage in side menu"
+        , Done "Show success percentage in side menu"
         , Done "Show trialIdx in side menu"
         , Do Low "reset experiment when reset button is clicked"
         ]
@@ -845,12 +845,14 @@ result trialData =
     (abs <| error trialData) <= (round <| params.targetDuration / 2)
 
 
-successRate : List TrialData -> number
-successRate =
+successRate : List TrialData -> Float
+successRate results =
     let
         boolToFloat b = if b then 1 else 0
+        
+        n = toFloat <| List.length results
     in
-        List.sum << List.map (boolToFloat << result)
+        (List.sum <| List.map (boolToFloat << result) results) / n
 
 
 score : Int -> Int
@@ -995,7 +997,7 @@ viewExperiment state =
         , width <| fillPortion 6
         -- , explain Debug.todo
         ]
-        [ drawScreen state
+        [ viewScreen state
         ]
     , vertSeparator
     , column
@@ -1200,8 +1202,11 @@ viewHelp state =
                 <| text "?"
             
 
-drawScreen : ExperimentState -> Element Msg
-drawScreen state = 
+viewScreen : ExperimentState -> Element Msg
+viewScreen state = 
+    let
+        safeWidth = state.width + 2 * (drawPaddingX state)
+    in
     el
         [ centerX
         , centerY
@@ -1214,14 +1219,14 @@ drawScreen state =
                 <| text <| "score: " ++ (fromInt state.totalScore)
         ]
         <| html <| svg
-            [ SA.width <| fromFloat state.width
+            [ SA.width <| fromFloat safeWidth
             , SA.height <| fromFloat state.height
             , SA.viewBox
                 <| String.join " "
                     ( List.map fromFloat
                         [ 0
                         , 0
-                        , state.width
+                        , safeWidth
                         , state.height
                         ]
                     )
@@ -1229,7 +1234,7 @@ drawScreen state =
             -- , centerX
             ]
             <| Svg.rect
-                [SA.width <| fromFloat state.width
+                [SA.width <| fromFloat safeWidth
                 , SA.height <| fromFloat state.height
                 ]
                 [Svg.text "foo"]
@@ -1239,13 +1244,18 @@ drawScreen state =
             ++ drawFeedback state
 
 
+drawPaddingX : ExperimentState -> Float
+drawPaddingX state =
+    (getRocketRadius state)
+
+
 drawRocket : ExperimentState -> List (Svg Msg)
 drawRocket ({currentTrial} as state) =
         case state.currentTrial of
             Launched trialData ->
                 let
                     rocket =
-                        { x = trialData.xFrac * state.width
+                        { x = trialData.xFrac * state.width + (drawPaddingX state)
                         , y = getRocketY trialData state
                         , r = getRocketRadius state
                         }
@@ -1259,7 +1269,7 @@ drawCue : ExperimentState -> List (Svg Msg)
 drawCue state = 
     if state.cue then
         Svg.rect
-            [ SA.x <| fromFloat <| getCueX state
+            [ SA.x <| fromFloat <| getCueX state + (drawPaddingX state)
             , SA.y <| fromFloat <| getStartY state
             , SA.width <| fromFloat <| getCueWidth state
             , SA.height <| fromFloat <| getCueHeight state
@@ -1283,10 +1293,13 @@ pointsToString points =
 
 drawTarget : ExperimentState -> List (Svg Msg)
 drawTarget state =
+    let
+        x = getX state + (drawPaddingX state)
+    in
     if state.target then
         Svg.polygon
             [ SA.points <| pointsToString <|
-                makeCrossPolygonPoints (getX state, getTargetY state) (getTargetSize state)
+                makeCrossPolygonPoints (x, getTargetY state) (getTargetSize state)
             , SA.stroke "rgb(255,255,255)"
             , SA.strokeWidth <| fromFloat <| (getTargetSize state) / 4
             ]
@@ -1307,13 +1320,15 @@ drawFeedback ({currentTrial} as state) =
                         if (result trialData) then
                             Svg.polyline
                                 [ SA.points <| pointsToString <|
-                                    makeCheckmarkPolygonPoints (state.width/2, state.height/2) (getFeedbackSize state)
+                                    makeCheckmarkPolygonPoints
+                                        (state.width/2 + (drawPaddingX state), state.height/2)
+                                        (getFeedbackSize state)
                                 , SA.stroke "rgb(0,255,0)"
                                 , SA.strokeWidth <| fromFloat <| (getFeedbackSize state) / 4
                                 ]
                                 []
                             :: Svg.text_
-                                [ SA.x <| fromFloat (state.width/2 - size * 0.70)
+                                [ SA.x <| fromFloat <| (state.width/2 - size * 0.70) + (drawPaddingX state)
                                 , SA.y <| fromFloat (state.height/2 + 1.5 * size)
                                 , SA.fontFamily "Lato"
                                 , SA.fontSize <| fromFloat (size * 0.4)
@@ -1333,13 +1348,15 @@ drawFeedback ({currentTrial} as state) =
                             in
                             Svg.polyline
                                 [ SA.points <| pointsToString <|
-                                    makeCrossPolygonPoints (state.width/2, state.height/2) size
+                                    makeCrossPolygonPoints
+                                        (state.width/2 + (drawPaddingX state), state.height/2)
+                                        size
                                 , SA.stroke "rgb(255,0,0)"
                                 , SA.strokeWidth <| fromFloat <| size / 4
                                 ]
                                 []
                             :: Svg.text_
-                                [ SA.x <| fromFloat (state.width/2 - size * 0.70)
+                                [ SA.x <| fromFloat <| (state.width/2 - size * 0.70) + (drawPaddingX state)
                                 , SA.y <| fromFloat (state.height/2 + 1.5 * size)
                                 , SA.fontFamily "Lato"
                                 , SA.fontSize <| fromFloat (size * 0.4)
@@ -1478,7 +1495,7 @@ vertSeparator =
                 none
 
         tints : List Float
-        tints = [0.25, 0.3, 0.35, 0.4]
+        tints = [0.25, 0.275, 0.3, 0.325, 0.35, 0.375, 0.4, 0.425, 0.45]
 
         greys : Float -> Float -> Int -> List Float
         greys start stop n =

@@ -4236,7 +4236,7 @@ function _Browser_getViewport()
 		cv: {
 			er: _Browser_window.pageXOffset,
 			es: _Browser_window.pageYOffset,
-			r: _Browser_doc.documentElement.clientWidth,
+			z: _Browser_doc.documentElement.clientWidth,
 			f: _Browser_doc.documentElement.clientHeight
 		}
 	};
@@ -4247,7 +4247,7 @@ function _Browser_getScene()
 	var body = _Browser_doc.body;
 	var elem = _Browser_doc.documentElement;
 	return {
-		r: Math.max(body.scrollWidth, body.offsetWidth, elem.scrollWidth, elem.offsetWidth, elem.clientWidth),
+		z: Math.max(body.scrollWidth, body.offsetWidth, elem.scrollWidth, elem.offsetWidth, elem.clientWidth),
 		f: Math.max(body.scrollHeight, body.offsetHeight, elem.scrollHeight, elem.offsetHeight, elem.clientHeight)
 	};
 }
@@ -4272,13 +4272,13 @@ function _Browser_getViewportOf(id)
 	{
 		return {
 			ch: {
-				r: node.scrollWidth,
+				z: node.scrollWidth,
 				f: node.scrollHeight
 			},
 			cv: {
 				er: node.scrollLeft,
 				es: node.scrollTop,
-				r: node.clientWidth,
+				z: node.clientWidth,
 				f: node.clientHeight
 			}
 		};
@@ -4313,13 +4313,13 @@ function _Browser_getElement(id)
 			cv: {
 				er: x,
 				es: y,
-				r: _Browser_doc.documentElement.clientWidth,
+				z: _Browser_doc.documentElement.clientWidth,
 				f: _Browser_doc.documentElement.clientHeight
 			},
 			dd: {
 				er: x + rect.left,
 				es: y + rect.top,
-				r: rect.width,
+				z: rect.width,
 				f: rect.height
 			}
 		};
@@ -5103,7 +5103,7 @@ var $MartinSStewart$elm_audio$Audio$UserMsg = function (a) {
 var $MartinSStewart$elm_audio$Audio$AudioData = $elm$core$Basics$identity;
 var $MartinSStewart$elm_audio$Audio$audioData = function (_v0) {
 	var model = _v0;
-	return {z: model.z};
+	return {y: model.y};
 };
 var $elm$core$Basics$composeR = F3(
 	function (f, g, x) {
@@ -6670,12 +6670,12 @@ var $MartinSStewart$elm_audio$Audio$initHelper = F3(
 			$elm$core$Dict$empty,
 			A2(
 				audioFunc,
-				{z: $elm$core$Dict$empty},
+				{y: $elm$core$Dict$empty},
 				model));
 		var audioState = _v1.a;
 		var newNodeGroupIdCounter = _v1.b;
 		var json = _v1.c;
-		var initialModel = {an: audioState, at: newNodeGroupIdCounter, m: $elm$core$Dict$empty, af: 0, ah: $elm$core$Maybe$Nothing, z: $elm$core$Dict$empty, S: model};
+		var initialModel = {an: audioState, at: newNodeGroupIdCounter, m: $elm$core$Dict$empty, af: 0, ah: $elm$core$Maybe$Nothing, y: $elm$core$Dict$empty, S: model};
 		var _v2 = A2($MartinSStewart$elm_audio$Audio$encodeAudioCmd, initialModel, audioCmds);
 		var initialModel2 = _v2.a;
 		var audioRequests = _v2.b;
@@ -6935,7 +6935,7 @@ var $MartinSStewart$elm_audio$Audio$update = F3(
 							$elm$core$Dict$insert,
 							$MartinSStewart$elm_audio$Audio$rawBufferId(bufferId),
 							{aI: duration},
-							model.z);
+							model.y);
 						var source = $elm$core$Result$Ok(
 							{aF: bufferId});
 						var maybeUserMsg = A2(
@@ -6957,7 +6957,7 @@ var $MartinSStewart$elm_audio$Audio$update = F3(
 									model,
 									{
 										m: A2($elm$core$Dict$remove, requestId, model.m),
-										z: sourceData
+										y: sourceData
 									}));
 						} else {
 							return A4(
@@ -6972,7 +6972,7 @@ var $MartinSStewart$elm_audio$Audio$update = F3(
 									model,
 									{
 										m: A2($elm$core$Dict$remove, requestId, model.m),
-										z: sourceData
+										y: sourceData
 									}));
 						}
 					} else {
@@ -7137,7 +7137,7 @@ var $MartinSStewart$elm_audio$Audio$loadAudio = F2(
 var $author$project$Main$init = function (_v0) {
 	return _Utils_Tuple3(
 		$author$project$Main$Initializing(
-			{V: $elm$core$Maybe$Nothing, x: false, a: _List_Nil, o: 0, aS: false}),
+			{V: $elm$core$Maybe$Nothing, w: false, a: _List_Nil, o: 0, aS: false}),
 		$elm$core$Platform$Cmd$none,
 		A2($MartinSStewart$elm_audio$Audio$loadAudio, $author$project$Main$SoundLoaded, 'beep.wav'));
 };
@@ -7459,16 +7459,16 @@ var $author$project$Main$duration = function (trial) {
 		switch (trial.$) {
 			case 0:
 				var data = trial.a;
-				return _Utils_Tuple2(data.v, data.h);
+				return _Utils_Tuple2(data.u, data.h);
 			case 1:
 				var data = trial.a;
-				return _Utils_Tuple2(data.v, data.h);
+				return _Utils_Tuple2(data.u, data.h);
 			case 2:
 				var data = trial.a;
-				return _Utils_Tuple2(data.v, data.h);
+				return _Utils_Tuple2(data.u, data.h);
 			default:
 				var data = trial.a;
-				return _Utils_Tuple2(data.v, data.h);
+				return _Utils_Tuple2(data.u, data.h);
 		}
 	}();
 	var profile = _v0.a;
@@ -7667,7 +7667,7 @@ var $author$project$Main$Idle = function (a) {
 var $author$project$Main$newTrial = F2(
 	function (profile, x) {
 		return $author$project$Main$Idle(
-			{v: profile, h: x});
+			{u: profile, h: x});
 	});
 var $author$project$Main$initExperiment = F3(
 	function (programState, profile, x) {
@@ -7679,7 +7679,7 @@ var $author$project$Main$initExperiment = F3(
 					a_: $elm$core$Maybe$Nothing,
 					aH: false,
 					i: A2($author$project$Main$newTrial, profile, x),
-					x: state.x,
+					w: state.w,
 					a: state.a,
 					f: 740,
 					aP: false,
@@ -7687,7 +7687,7 @@ var $author$project$Main$initExperiment = F3(
 					o: state.o,
 					aj: false,
 					ay: 0,
-					r: 960
+					z: 960
 				});
 		} else {
 			return programState;
@@ -7981,7 +7981,7 @@ var $author$project$Main$launchTrial = F2(
 	function (time, trial) {
 		if (trial.$ === 2) {
 			var oldData = trial.a;
-			var newData = {ap: time, ar: oldData.ar, aN: time, v: oldData.v, aw: oldData.aw, h: oldData.h};
+			var newData = {ap: time, ar: oldData.ar, aN: time, u: oldData.u, aw: oldData.aw, h: oldData.h};
 			return $author$project$Main$Launched(newData);
 		} else {
 			return trial;
@@ -8040,7 +8040,7 @@ var $author$project$Main$startTrial = F2(
 	function (time, trial) {
 		if (trial.$ === 1) {
 			var oldData = trial.a;
-			var newData = {ar: oldData.ar, v: oldData.v, aw: time, h: oldData.h};
+			var newData = {ar: oldData.ar, u: oldData.u, aw: time, h: oldData.h};
 			return $author$project$Main$Launchable(newData);
 		} else {
 			return trial;
@@ -8187,7 +8187,7 @@ var $author$project$Main$updateExperimentState = F2(
 				var delay = msg.a;
 				if (!currentTrial.$) {
 					var oldData = currentTrial.a;
-					var newData = {ar: delay, v: oldData.v, h: oldData.h};
+					var newData = {ar: delay, u: oldData.u, h: oldData.h};
 					return _Utils_Tuple2(
 						_Utils_update(
 							state,
@@ -8334,7 +8334,7 @@ var $author$project$Main$updateExperimentState = F2(
 								'HeightChanged [h=' + ($elm$core$String$fromInt(h) + ']'),
 								state.a),
 							f: newHeight,
-							r: newWidth
+							z: newWidth
 						}),
 					$elm$core$Platform$Cmd$none);
 			case 1:
@@ -8342,7 +8342,7 @@ var $author$project$Main$updateExperimentState = F2(
 				return _Utils_Tuple2(
 					_Utils_update(
 						state,
-						{x: bool}),
+						{w: bool}),
 					$elm$core$Platform$Cmd$none);
 			case 3:
 				return _Utils_Tuple2(
@@ -8421,7 +8421,7 @@ var $author$project$Main$updateSetupState = F2(
 				return _Utils_Tuple2(
 					_Utils_update(
 						state,
-						{x: bool}),
+						{w: bool}),
 					$elm$core$Platform$Cmd$none);
 			case 6:
 				var str = msg.a;
@@ -8437,7 +8437,7 @@ var $author$project$Main$updateSetupState = F2(
 		}
 	});
 var $author$project$Main$viewport2HeightChanged = function (v) {
-	var width = $elm$core$Basics$round(v.cv.r);
+	var width = $elm$core$Basics$round(v.cv.z);
 	var height = $elm$core$Basics$round(v.cv.f);
 	return $author$project$Main$HeightChanged(height);
 };
@@ -8631,7 +8631,7 @@ var $mdgriffith$elm_ui$Element$createNearby = F2(
 var $mdgriffith$elm_ui$Element$inFront = function (element) {
 	return A2($mdgriffith$elm_ui$Element$createNearby, 4, element);
 };
-var $mdgriffith$elm_ui$Internal$Style$classes = {cA: 'a', bj: 'atv', cC: 'ab', cD: 'cx', cE: 'cy', cF: 'acb', cG: 'accx', cH: 'accy', cI: 'acr', bH: 'al', bI: 'ar', cJ: 'at', bk: 'ah', bl: 'av', cL: 's', cR: 'bh', cS: 'b', cU: 'w7', cW: 'bd', cX: 'bdt', a$: 'bn', cY: 'bs', a0: 'cpe', c2: 'cp', c3: 'cpx', c4: 'cpy', L: 'c', a2: 'ctr', a3: 'cb', a4: 'ccx', M: 'ccy', aG: 'cl', a5: 'cr', c7: 'ct', c8: 'cptr', c9: 'ctxt', dg: 'fcs', bQ: 'focus-within', di: 'fs', dj: 'g', bq: 'hbh', br: 'hc', bT: 'he', bs: 'hf', bU: 'hfp', dl: 'hv', dn: 'ic', dp: 'fr', a9: 'lbl', dr: 'iml', ds: 'imlf', dt: 'imlp', du: 'implw', dv: 'it', dw: 'i', bZ: 'lnk', as: 'nb', b2: 'notxt', dF: 'ol', dG: 'or', ab: 'oq', dI: 'oh', b5: 'pg', b6: 'p', dJ: 'ppe', dN: 'ui', D: 'r', dP: 'sb', dQ: 'sbx', dR: 'sby', dS: 'sbt', dU: 'e', dW: 'cap', dX: 'sev', d1: 'sk', w: 't', d4: 'tc', d5: 'w8', d6: 'w2', d7: 'w9', d8: 'tj', bh: 'tja', d9: 'tl', ea: 'w3', eb: 'w5', ec: 'w4', ed: 'tr', ee: 'w6', ef: 'w1', eg: 'tun', cp: 'ts', al: 'clr', em: 'u', bD: 'wc', cx: 'we', bE: 'wf', cy: 'wfp', bF: 'wrp'};
+var $mdgriffith$elm_ui$Internal$Style$classes = {cA: 'a', bj: 'atv', cC: 'ab', cD: 'cx', cE: 'cy', cF: 'acb', cG: 'accx', cH: 'accy', cI: 'acr', bH: 'al', bI: 'ar', cJ: 'at', bk: 'ah', bl: 'av', cL: 's', cR: 'bh', cS: 'b', cU: 'w7', cW: 'bd', cX: 'bdt', a$: 'bn', cY: 'bs', a0: 'cpe', c2: 'cp', c3: 'cpx', c4: 'cpy', L: 'c', a2: 'ctr', a3: 'cb', a4: 'ccx', M: 'ccy', aG: 'cl', a5: 'cr', c7: 'ct', c8: 'cptr', c9: 'ctxt', dg: 'fcs', bQ: 'focus-within', di: 'fs', dj: 'g', bq: 'hbh', br: 'hc', bT: 'he', bs: 'hf', bU: 'hfp', dl: 'hv', dn: 'ic', dp: 'fr', a9: 'lbl', dr: 'iml', ds: 'imlf', dt: 'imlp', du: 'implw', dv: 'it', dw: 'i', bZ: 'lnk', as: 'nb', b2: 'notxt', dF: 'ol', dG: 'or', ab: 'oq', dI: 'oh', b5: 'pg', b6: 'p', dJ: 'ppe', dN: 'ui', D: 'r', dP: 'sb', dQ: 'sbx', dR: 'sby', dS: 'sbt', dU: 'e', dW: 'cap', dX: 'sev', d1: 'sk', v: 't', d4: 'tc', d5: 'w8', d6: 'w2', d7: 'w9', d8: 'tj', bh: 'tja', d9: 'tl', ea: 'w3', eb: 'w5', ec: 'w4', ed: 'tr', ee: 'w6', ef: 'w1', eg: 'tun', cp: 'ts', al: 'clr', em: 'u', bD: 'wc', cx: 'we', bE: 'wf', cy: 'wfp', bF: 'wrp'};
 var $mdgriffith$elm_ui$Internal$Model$Attr = function (a) {
 	return {$: 1, a: a};
 };
@@ -8880,7 +8880,7 @@ var $mdgriffith$elm_ui$Internal$Model$getStyleName = function (style) {
 				A2($elm$core$List$map, $mdgriffith$elm_ui$Internal$Model$lengthClassName, template.G)) + ('-space-x-' + ($mdgriffith$elm_ui$Internal$Model$lengthClassName(template.dY.a) + ('-space-y-' + $mdgriffith$elm_ui$Internal$Model$lengthClassName(template.dY.b)))))));
 		case 9:
 			var pos = style.a;
-			return 'gp grid-pos-' + ($elm$core$String$fromInt(pos.D) + ('-' + ($elm$core$String$fromInt(pos.c5) + ('-' + ($elm$core$String$fromInt(pos.r) + ('-' + $elm$core$String$fromInt(pos.f)))))));
+			return 'gp grid-pos-' + ($elm$core$String$fromInt(pos.D) + ('-' + ($elm$core$String$fromInt(pos.c5) + ('-' + ($elm$core$String$fromInt(pos.z) + ('-' + $elm$core$String$fromInt(pos.f)))))));
 		case 11:
 			var selector = style.a;
 			var subStyle = style.b;
@@ -9256,7 +9256,7 @@ var $mdgriffith$elm_ui$Internal$Style$elDescription = _List_fromArray(
 			[
 				A2(
 				$mdgriffith$elm_ui$Internal$Style$Child,
-				$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.w),
+				$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.v),
 				_List_fromArray(
 					[
 						A2(
@@ -9953,7 +9953,7 @@ var $mdgriffith$elm_ui$Internal$Style$baseSheet = _List_fromArray(
 					])),
 				A2(
 				$mdgriffith$elm_ui$Internal$Style$Descriptor,
-				$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.w),
+				$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.v),
 				_List_fromArray(
 					[
 						A2($mdgriffith$elm_ui$Internal$Style$Prop, 'white-space', 'pre'),
@@ -10561,7 +10561,7 @@ var $mdgriffith$elm_ui$Internal$Style$baseSheet = _List_fromArray(
 							])),
 						A2(
 						$mdgriffith$elm_ui$Internal$Style$AllChildren,
-						$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.w),
+						$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.v),
 						_List_fromArray(
 							[
 								A2($mdgriffith$elm_ui$Internal$Style$Prop, 'display', 'inline'),
@@ -10646,7 +10646,7 @@ var $mdgriffith$elm_ui$Internal$Style$baseSheet = _List_fromArray(
 									])),
 								A2(
 								$mdgriffith$elm_ui$Internal$Style$Child,
-								$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.w),
+								$mdgriffith$elm_ui$Internal$Style$dot($mdgriffith$elm_ui$Internal$Style$classes.v),
 								_List_fromArray(
 									[
 										A2($mdgriffith$elm_ui$Internal$Style$Prop, 'display', 'inline'),
@@ -11789,7 +11789,7 @@ var $mdgriffith$elm_ui$Internal$Model$renderStyleRule = F3(
 							'-ms-grid-row: ' + ($elm$core$String$fromInt(position.D) + ';'),
 							'-ms-grid-row-span: ' + ($elm$core$String$fromInt(position.f) + ';'),
 							'-ms-grid-column: ' + ($elm$core$String$fromInt(position.c5) + ';'),
-							'-ms-grid-column-span: ' + ($elm$core$String$fromInt(position.r) + ';')
+							'-ms-grid-column-span: ' + ($elm$core$String$fromInt(position.z) + ';')
 						]));
 				var modernPosition = A2(
 					$elm$core$String$join,
@@ -11797,9 +11797,9 @@ var $mdgriffith$elm_ui$Internal$Model$renderStyleRule = F3(
 					_List_fromArray(
 						[
 							'grid-row: ' + ($elm$core$String$fromInt(position.D) + (' / ' + ($elm$core$String$fromInt(position.D + position.f) + ';'))),
-							'grid-column: ' + ($elm$core$String$fromInt(position.c5) + (' / ' + ($elm$core$String$fromInt(position.c5 + position.r) + ';')))
+							'grid-column: ' + ($elm$core$String$fromInt(position.c5) + (' / ' + ($elm$core$String$fromInt(position.c5 + position.z) + ';')))
 						]));
-				var _class = '.grid-pos-' + ($elm$core$String$fromInt(position.D) + ('-' + ($elm$core$String$fromInt(position.c5) + ('-' + ($elm$core$String$fromInt(position.r) + ('-' + $elm$core$String$fromInt(position.f)))))));
+				var _class = '.grid-pos-' + ($elm$core$String$fromInt(position.D) + ('-' + ($elm$core$String$fromInt(position.c5) + ('-' + ($elm$core$String$fromInt(position.z) + ('-' + $elm$core$String$fromInt(position.f)))))));
 				var modernGrid = _class + ('{' + (modernPosition + '}'));
 				var supports = '@supports (display:grid) {' + (modernGrid + '}');
 				var base = _class + ('{' + (msPosition + '}'));
@@ -11870,7 +11870,7 @@ var $mdgriffith$elm_ui$Internal$Model$fontRule = F3(
 		return _List_fromArray(
 			[
 				A2($mdgriffith$elm_ui$Internal$Model$bracket, '.' + (name + ('.' + (modifier + (', ' + ('.' + (name + (' .' + modifier))))))), parentAdj),
-				A2($mdgriffith$elm_ui$Internal$Model$bracket, '.' + (name + ('.' + (modifier + ('> .' + ($mdgriffith$elm_ui$Internal$Style$classes.w + (', .' + (name + (' .' + (modifier + (' > .' + $mdgriffith$elm_ui$Internal$Style$classes.w)))))))))), textAdjustment)
+				A2($mdgriffith$elm_ui$Internal$Model$bracket, '.' + (name + ('.' + (modifier + ('> .' + ($mdgriffith$elm_ui$Internal$Style$classes.v + (', .' + (name + (' .' + (modifier + (' > .' + $mdgriffith$elm_ui$Internal$Style$classes.v)))))))))), textAdjustment)
 			]);
 	});
 var $mdgriffith$elm_ui$Internal$Model$renderFontAdjustmentRule = F3(
@@ -11902,7 +11902,7 @@ var $mdgriffith$elm_ui$Internal$Model$renderNullAdjustmentRule = F2(
 						])),
 					A2(
 					$mdgriffith$elm_ui$Internal$Model$bracket,
-					'.' + (name + ('.' + ($mdgriffith$elm_ui$Internal$Style$classes.dW + ('> .' + ($mdgriffith$elm_ui$Internal$Style$classes.w + (', .' + (name + (' .' + ($mdgriffith$elm_ui$Internal$Style$classes.dW + (' > .' + $mdgriffith$elm_ui$Internal$Style$classes.w)))))))))),
+					'.' + (name + ('.' + ($mdgriffith$elm_ui$Internal$Style$classes.dW + ('> .' + ($mdgriffith$elm_ui$Internal$Style$classes.v + (', .' + (name + (' .' + ($mdgriffith$elm_ui$Internal$Style$classes.dW + (' > .' + $mdgriffith$elm_ui$Internal$Style$classes.v)))))))))),
 					_List_fromArray(
 						[
 							_Utils_Tuple2('vertical-align', '0'),
@@ -12381,7 +12381,7 @@ var $elm$core$List$isEmpty = function (xs) {
 	}
 };
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
-var $mdgriffith$elm_ui$Internal$Model$textElementClasses = $mdgriffith$elm_ui$Internal$Style$classes.cL + (' ' + ($mdgriffith$elm_ui$Internal$Style$classes.w + (' ' + ($mdgriffith$elm_ui$Internal$Style$classes.bD + (' ' + $mdgriffith$elm_ui$Internal$Style$classes.br)))));
+var $mdgriffith$elm_ui$Internal$Model$textElementClasses = $mdgriffith$elm_ui$Internal$Style$classes.cL + (' ' + ($mdgriffith$elm_ui$Internal$Style$classes.v + (' ' + ($mdgriffith$elm_ui$Internal$Style$classes.bD + (' ' + $mdgriffith$elm_ui$Internal$Style$classes.br)))));
 var $mdgriffith$elm_ui$Internal$Model$textElement = function (str) {
 	return A2(
 		$elm$html$Html$div,
@@ -12394,7 +12394,7 @@ var $mdgriffith$elm_ui$Internal$Model$textElement = function (str) {
 				$elm$html$Html$text(str)
 			]));
 };
-var $mdgriffith$elm_ui$Internal$Model$textElementFillClasses = $mdgriffith$elm_ui$Internal$Style$classes.cL + (' ' + ($mdgriffith$elm_ui$Internal$Style$classes.w + (' ' + ($mdgriffith$elm_ui$Internal$Style$classes.bE + (' ' + $mdgriffith$elm_ui$Internal$Style$classes.bs)))));
+var $mdgriffith$elm_ui$Internal$Model$textElementFillClasses = $mdgriffith$elm_ui$Internal$Style$classes.cL + (' ' + ($mdgriffith$elm_ui$Internal$Style$classes.v + (' ' + ($mdgriffith$elm_ui$Internal$Style$classes.bE + (' ' + $mdgriffith$elm_ui$Internal$Style$classes.bs)))));
 var $mdgriffith$elm_ui$Internal$Model$textElementFill = function (str) {
 	return A2(
 		$elm$html$Html$div,
@@ -14595,16 +14595,17 @@ var $mdgriffith$elm_ui$Element$Font$size = function (i) {
 		$mdgriffith$elm_ui$Internal$Flag$fontSize,
 		$mdgriffith$elm_ui$Internal$Model$FontSize(i));
 };
-var $author$project$Main$successRate = function () {
+var $author$project$Main$successRate = function (results) {
+	var n = $elm$core$List$length(results);
 	var boolToFloat = function (b) {
 		return b ? 1 : 0;
 	};
-	return A2(
-		$elm$core$Basics$composeL,
-		$elm$core$List$sum,
-		$elm$core$List$map(
-			A2($elm$core$Basics$composeL, boolToFloat, $author$project$Main$result)));
-}();
+	return $elm$core$List$sum(
+		A2(
+			$elm$core$List$map,
+			A2($elm$core$Basics$composeL, boolToFloat, $author$project$Main$result),
+			results)) / n;
+};
 var $mdgriffith$elm_ui$Internal$Model$Text = function (a) {
 	return {$: 2, a: a};
 };
@@ -14689,9 +14690,9 @@ var $author$project$Main$menuPanel = function (state) {
 										[$mdgriffith$elm_ui$Element$centerX]),
 									{
 										bb: $mdgriffith$elm_ui$Element$text(
-											state.x ? 'Hide debugging' : 'Show debugging'),
+											state.w ? 'Hide debugging' : 'Show debugging'),
 										bv: $elm$core$Maybe$Just(
-											$author$project$Main$SetDebugging(!state.x))
+											$author$project$Main$SetDebugging(!state.w))
 									}),
 									A2(
 									$mdgriffith$elm_ui$Element$Input$button,
@@ -14783,393 +14784,6 @@ var $author$project$Main$menuPanel = function (state) {
 };
 var $mdgriffith$elm_ui$Element$Font$sansSerif = $mdgriffith$elm_ui$Internal$Model$SansSerif;
 var $mdgriffith$elm_ui$Element$Font$typeface = $mdgriffith$elm_ui$Internal$Model$Typeface;
-var $elm$svg$Svg$Attributes$fill = _VirtualDom_attribute('fill');
-var $author$project$Main$getCueWidth = function (state) {
-	return $author$project$Main$params.bo * state.f;
-};
-var $author$project$Main$getCueHeight = function (state) {
-	return $author$project$Main$getCueWidth(state) / 5;
-};
-var $author$project$Main$getX = function (state) {
-	var currentTrial = state.i;
-	var xFrac = function () {
-		switch (currentTrial.$) {
-			case 0:
-				var data = currentTrial.a;
-				return data.h;
-			case 1:
-				var data = currentTrial.a;
-				return data.h;
-			case 2:
-				var data = currentTrial.a;
-				return data.h;
-			default:
-				var data = currentTrial.a;
-				return data.h;
-		}
-	}();
-	return xFrac * state.r;
-};
-var $author$project$Main$getCueX = function (state) {
-	return $author$project$Main$getX(state) - ($author$project$Main$getCueWidth(state) / 2);
-};
-var $author$project$Main$getStartY = function (state) {
-	return (1 - $author$project$Main$params.aT) * state.f;
-};
-var $elm$svg$Svg$Attributes$height = _VirtualDom_attribute('height');
-var $elm$svg$Svg$trustedNode = _VirtualDom_nodeNS('http://www.w3.org/2000/svg');
-var $elm$svg$Svg$rect = $elm$svg$Svg$trustedNode('rect');
-var $elm$svg$Svg$Attributes$width = _VirtualDom_attribute('width');
-var $elm$svg$Svg$Attributes$x = _VirtualDom_attribute('x');
-var $elm$svg$Svg$Attributes$y = _VirtualDom_attribute('y');
-var $author$project$Main$drawCue = function (state) {
-	return state.aH ? A2(
-		$elm$core$List$cons,
-		A2(
-			$elm$svg$Svg$rect,
-			_List_fromArray(
-				[
-					$elm$svg$Svg$Attributes$x(
-					$elm$core$String$fromFloat(
-						$author$project$Main$getCueX(state))),
-					$elm$svg$Svg$Attributes$y(
-					$elm$core$String$fromFloat(
-						$author$project$Main$getStartY(state))),
-					$elm$svg$Svg$Attributes$width(
-					$elm$core$String$fromFloat(
-						$author$project$Main$getCueWidth(state))),
-					$elm$svg$Svg$Attributes$height(
-					$elm$core$String$fromFloat(
-						$author$project$Main$getCueHeight(state))),
-					$elm$svg$Svg$Attributes$fill('rgb(255,255,255)')
-				]),
-			_List_Nil),
-		_List_Nil) : _List_Nil;
-};
-var $elm$svg$Svg$Attributes$fontFamily = _VirtualDom_attribute('font-family');
-var $elm$svg$Svg$Attributes$fontSize = _VirtualDom_attribute('font-size');
-var $author$project$Main$getFeedbackSize = function (state) {
-	return $author$project$Main$params.bp * state.f;
-};
-var $author$project$Main$makeCheckmarkPolygonPoints = F2(
-	function (_v0, w) {
-		var x = _v0.a;
-		var y = _v0.b;
-		return _List_fromArray(
-			[
-				_Utils_Tuple2(x - (w / 2), y - (w / 2)),
-				_Utils_Tuple2(x, y),
-				_Utils_Tuple2(x + w, y - w)
-			]);
-	});
-var $author$project$Main$makeCrossPolygonPoints = F2(
-	function (_v0, w) {
-		var x = _v0.a;
-		var y = _v0.b;
-		return _List_fromArray(
-			[
-				_Utils_Tuple2(x, y),
-				_Utils_Tuple2(x + (w / 2), y + (w / 2)),
-				_Utils_Tuple2(x, y),
-				_Utils_Tuple2(x + (w / 2), y - (w / 2)),
-				_Utils_Tuple2(x, y),
-				_Utils_Tuple2(x - (w / 2), y - (w / 2)),
-				_Utils_Tuple2(x, y),
-				_Utils_Tuple2(x - (w / 2), y + (w / 2))
-			]);
-	});
-var $elm$svg$Svg$Attributes$points = _VirtualDom_attribute('points');
-var $author$project$Main$pointsToString = function (points) {
-	if (!points.b) {
-		return '';
-	} else {
-		var _v1 = points.a;
-		var x = _v1.a;
-		var y = _v1.b;
-		var ps = points.b;
-		return $elm$core$String$fromFloat(x) + (',' + ($elm$core$String$fromFloat(y) + (' ' + $author$project$Main$pointsToString(ps))));
-	}
-};
-var $elm$svg$Svg$polyline = $elm$svg$Svg$trustedNode('polyline');
-var $elm$svg$Svg$Attributes$stroke = _VirtualDom_attribute('stroke');
-var $elm$svg$Svg$Attributes$strokeWidth = _VirtualDom_attribute('stroke-width');
-var $elm$svg$Svg$text = $elm$virtual_dom$VirtualDom$text;
-var $elm$svg$Svg$text_ = $elm$svg$Svg$trustedNode('text');
-var $author$project$Main$drawFeedback = function (state) {
-	var currentTrial = state.i;
-	if (currentTrial.$ === 3) {
-		var trialData = currentTrial.a;
-		var size = $author$project$Main$getFeedbackSize(state);
-		if ($author$project$Main$hasEnded(trialData)) {
-			if ($author$project$Main$result(trialData)) {
-				return A2(
-					$elm$core$List$cons,
-					A2(
-						$elm$svg$Svg$polyline,
-						_List_fromArray(
-							[
-								$elm$svg$Svg$Attributes$points(
-								$author$project$Main$pointsToString(
-									A2(
-										$author$project$Main$makeCheckmarkPolygonPoints,
-										_Utils_Tuple2(state.r / 2, state.f / 2),
-										$author$project$Main$getFeedbackSize(state)))),
-								$elm$svg$Svg$Attributes$stroke('rgb(0,255,0)'),
-								$elm$svg$Svg$Attributes$strokeWidth(
-								$elm$core$String$fromFloat(
-									$author$project$Main$getFeedbackSize(state) / 4))
-							]),
-						_List_Nil),
-					A2(
-						$elm$core$List$cons,
-						A2(
-							$elm$svg$Svg$text_,
-							_List_fromArray(
-								[
-									$elm$svg$Svg$Attributes$x(
-									$elm$core$String$fromFloat((state.r / 2) - (size * 0.70))),
-									$elm$svg$Svg$Attributes$y(
-									$elm$core$String$fromFloat((state.f / 2) + (1.5 * size))),
-									$elm$svg$Svg$Attributes$fontFamily('Lato'),
-									$elm$svg$Svg$Attributes$fontSize(
-									$elm$core$String$fromFloat(size * 0.4)),
-									$elm$svg$Svg$Attributes$fill('rgb(0,255,0)')
-								]),
-							_List_fromArray(
-								[
-									$elm$svg$Svg$text(
-									'+' + $elm$core$String$fromInt(
-										A2($elm$core$Basics$composeL, $author$project$Main$score, $author$project$Main$error)(trialData)))
-								])),
-						_List_Nil));
-			} else {
-				var suffix = ($author$project$Main$error(trialData) < 0) ? 'late' : 'early';
-				return A2(
-					$elm$core$List$cons,
-					A2(
-						$elm$svg$Svg$polyline,
-						_List_fromArray(
-							[
-								$elm$svg$Svg$Attributes$points(
-								$author$project$Main$pointsToString(
-									A2(
-										$author$project$Main$makeCrossPolygonPoints,
-										_Utils_Tuple2(state.r / 2, state.f / 2),
-										size))),
-								$elm$svg$Svg$Attributes$stroke('rgb(255,0,0)'),
-								$elm$svg$Svg$Attributes$strokeWidth(
-								$elm$core$String$fromFloat(size / 4))
-							]),
-						_List_Nil),
-					A2(
-						$elm$core$List$cons,
-						A2(
-							$elm$svg$Svg$text_,
-							_List_fromArray(
-								[
-									$elm$svg$Svg$Attributes$x(
-									$elm$core$String$fromFloat((state.r / 2) - (size * 0.70))),
-									$elm$svg$Svg$Attributes$y(
-									$elm$core$String$fromFloat((state.f / 2) + (1.5 * size))),
-									$elm$svg$Svg$Attributes$fontFamily('Lato'),
-									$elm$svg$Svg$Attributes$fontSize(
-									$elm$core$String$fromFloat(size * 0.4)),
-									$elm$svg$Svg$Attributes$fill('rgb(255,0,0)')
-								]),
-							_List_fromArray(
-								[
-									$elm$svg$Svg$text('too ' + suffix)
-								])),
-						_List_Nil));
-			}
-		} else {
-			return _List_Nil;
-		}
-	} else {
-		return _List_Nil;
-	}
-};
-var $author$project$Main$getRocketRadius = function (state) {
-	return $author$project$Main$params.bx * state.f;
-};
-var $author$project$Main$getRocketY = F2(
-	function (trialData, state) {
-		var flightDist = $author$project$Main$params.bg - $author$project$Main$params.aT;
-		var dt = $elm$time$Time$posixToMillis(trialData.ap) - $elm$time$Time$posixToMillis(trialData.aN);
-		var dy = dt / $author$project$Main$params.aL;
-		return state.f * (1 - ($author$project$Main$params.aT + (flightDist * dy)));
-	});
-var $author$project$Rocket$initialSeg = function (rocket) {
-	return {aE: 242.25, aJ: 0.0, aM: 242.25, aQ: 242.25, aR: rocket.dK, au: rocket.dK};
-};
-var $author$project$Rocket$makeTailSegments = F2(
-	function (n, seg) {
-		if (n <= 0) {
-			return _List_Nil;
-		} else {
-			var yDecay = 0.8;
-			var xDecay = 0.6;
-			var cDecay = 0.8;
-			var newSeg = {aE: seg.aE * cDecay, aJ: seg.aJ + (seg.au * (1.0 + (0.2 * yDecay))), aM: seg.aM * cDecay, aQ: seg.aQ * cDecay, aR: seg.aR * xDecay, au: seg.au * yDecay};
-			return _Utils_ap(
-				_List_fromArray(
-					[newSeg]),
-				A2($author$project$Rocket$makeTailSegments, n - 1, newSeg));
-		}
-	});
-var $elm$svg$Svg$Attributes$cx = _VirtualDom_attribute('cx');
-var $elm$svg$Svg$Attributes$cy = _VirtualDom_attribute('cy');
-var $elm$svg$Svg$ellipse = $elm$svg$Svg$trustedNode('ellipse');
-var $elm$svg$Svg$Attributes$rx = _VirtualDom_attribute('rx');
-var $elm$svg$Svg$Attributes$ry = _VirtualDom_attribute('ry');
-var $author$project$Rocket$segmentColor = function (seg) {
-	return 'rgb(' + ($elm$core$String$fromFloat(seg.aQ) + (',' + ($elm$core$String$fromFloat(seg.aM) + (',' + ($elm$core$String$fromFloat(seg.aE) + ')')))));
-};
-var $author$project$Rocket$viewSegment = F3(
-	function (x, y, seg) {
-		return A2(
-			$elm$svg$Svg$ellipse,
-			_List_fromArray(
-				[
-					$elm$svg$Svg$Attributes$cx(
-					$elm$core$String$fromFloat(x)),
-					$elm$svg$Svg$Attributes$cy(
-					$elm$core$String$fromFloat(y + seg.aJ)),
-					$elm$svg$Svg$Attributes$rx(
-					$elm$core$String$fromFloat(seg.aR)),
-					$elm$svg$Svg$Attributes$ry(
-					$elm$core$String$fromFloat(seg.au)),
-					$elm$svg$Svg$Attributes$fill(
-					$author$project$Rocket$segmentColor(seg))
-				]),
-			_List_Nil);
-	});
-var $author$project$Rocket$view = function (rocket) {
-	var tip = $author$project$Rocket$initialSeg(rocket);
-	return $elm$core$List$reverse(
-		A2(
-			$elm$core$List$map,
-			A2($author$project$Rocket$viewSegment, rocket.er, rocket.es),
-			_Utils_ap(
-				_List_fromArray(
-					[tip]),
-				A2($author$project$Rocket$makeTailSegments, 5, tip))));
-};
-var $author$project$Main$drawRocket = function (state) {
-	var currentTrial = state.i;
-	var _v0 = state.i;
-	if (_v0.$ === 3) {
-		var trialData = _v0.a;
-		var rocket = {
-			dK: $author$project$Main$getRocketRadius(state),
-			er: trialData.h * state.r,
-			es: A2($author$project$Main$getRocketY, trialData, state)
-		};
-		return $author$project$Rocket$view(rocket);
-	} else {
-		return _List_Nil;
-	}
-};
-var $author$project$Main$getTargetSize = function (state) {
-	return $author$project$Main$params.bC * state.f;
-};
-var $author$project$Main$getTargetY = function (state) {
-	return (1 - $author$project$Main$params.bg) * state.f;
-};
-var $elm$svg$Svg$polygon = $elm$svg$Svg$trustedNode('polygon');
-var $author$project$Main$drawTarget = function (state) {
-	return state.aj ? A2(
-		$elm$core$List$cons,
-		A2(
-			$elm$svg$Svg$polygon,
-			_List_fromArray(
-				[
-					$elm$svg$Svg$Attributes$points(
-					$author$project$Main$pointsToString(
-						A2(
-							$author$project$Main$makeCrossPolygonPoints,
-							_Utils_Tuple2(
-								$author$project$Main$getX(state),
-								$author$project$Main$getTargetY(state)),
-							$author$project$Main$getTargetSize(state)))),
-					$elm$svg$Svg$Attributes$stroke('rgb(255,255,255)'),
-					$elm$svg$Svg$Attributes$strokeWidth(
-					$elm$core$String$fromFloat(
-						$author$project$Main$getTargetSize(state) / 4))
-				]),
-			_List_Nil),
-		_List_Nil) : _List_Nil;
-};
-var $elm$core$Basics$always = F2(
-	function (a, _v0) {
-		return a;
-	});
-var $mdgriffith$elm_ui$Internal$Model$unstyled = A2($elm$core$Basics$composeL, $mdgriffith$elm_ui$Internal$Model$Unstyled, $elm$core$Basics$always);
-var $mdgriffith$elm_ui$Element$html = $mdgriffith$elm_ui$Internal$Model$unstyled;
-var $elm$svg$Svg$svg = $elm$svg$Svg$trustedNode('svg');
-var $elm$svg$Svg$Attributes$viewBox = _VirtualDom_attribute('viewBox');
-var $author$project$Main$drawScreen = function (state) {
-	return A2(
-		$mdgriffith$elm_ui$Element$el,
-		_List_fromArray(
-			[
-				$mdgriffith$elm_ui$Element$centerX,
-				$mdgriffith$elm_ui$Element$centerY,
-				$mdgriffith$elm_ui$Element$inFront(
-				A2(
-					$mdgriffith$elm_ui$Element$el,
-					_List_fromArray(
-						[
-							$mdgriffith$elm_ui$Element$padding(12),
-							$mdgriffith$elm_ui$Element$alignTop,
-							$mdgriffith$elm_ui$Element$centerX
-						]),
-					$mdgriffith$elm_ui$Element$text(
-						'score: ' + $elm$core$String$fromInt(state.ay))))
-			]),
-		$mdgriffith$elm_ui$Element$html(
-			A2(
-				$elm$svg$Svg$svg,
-				_List_fromArray(
-					[
-						$elm$svg$Svg$Attributes$width(
-						$elm$core$String$fromFloat(state.r)),
-						$elm$svg$Svg$Attributes$height(
-						$elm$core$String$fromFloat(state.f)),
-						$elm$svg$Svg$Attributes$viewBox(
-						A2(
-							$elm$core$String$join,
-							' ',
-							A2(
-								$elm$core$List$map,
-								$elm$core$String$fromFloat,
-								_List_fromArray(
-									[0, 0, state.r, state.f])))),
-						$elm$svg$Svg$Attributes$fill('rgb(51,51,51)')
-					]),
-				A2(
-					$elm$core$List$cons,
-					A2(
-						$elm$svg$Svg$rect,
-						_List_fromArray(
-							[
-								$elm$svg$Svg$Attributes$width(
-								$elm$core$String$fromFloat(state.r)),
-								$elm$svg$Svg$Attributes$height(
-								$elm$core$String$fromFloat(state.f))
-							]),
-						_List_fromArray(
-							[
-								$elm$svg$Svg$text('foo')
-							])),
-					_Utils_ap(
-						$author$project$Main$drawCue(state),
-						_Utils_ap(
-							$author$project$Main$drawTarget(state),
-							_Utils_ap(
-								$author$project$Main$drawRocket(state),
-								$author$project$Main$drawFeedback(state))))))));
-};
 var $mdgriffith$elm_ui$Element$fillPortion = $mdgriffith$elm_ui$Internal$Model$Fill;
 var $author$project$Main$greytint = function (f) {
 	return A3($mdgriffith$elm_ui$Element$rgb, f, f, f);
@@ -15205,7 +14819,7 @@ var $mdgriffith$elm_ui$Element$Border$widthEach = function (_v0) {
 };
 var $author$project$Main$vertSeparator = function () {
 	var tints = _List_fromArray(
-		[0.25, 0.3, 0.35, 0.4]);
+		[0.25, 0.275, 0.3, 0.325, 0.35, 0.375, 0.4, 0.425, 0.45]);
 	var sep = function (color) {
 		return A2(
 			$mdgriffith$elm_ui$Element$el,
@@ -15318,10 +14932,408 @@ var $author$project$Main$viewDebugLog = F2(
 					$author$project$Main$viewDebugEntries(log)) : $mdgriffith$elm_ui$Element$none
 				]));
 	});
+var $author$project$Main$getRocketRadius = function (state) {
+	return $author$project$Main$params.bx * state.f;
+};
+var $author$project$Main$drawPaddingX = function (state) {
+	return $author$project$Main$getRocketRadius(state);
+};
+var $elm$svg$Svg$Attributes$fill = _VirtualDom_attribute('fill');
+var $author$project$Main$getCueWidth = function (state) {
+	return $author$project$Main$params.bo * state.f;
+};
+var $author$project$Main$getCueHeight = function (state) {
+	return $author$project$Main$getCueWidth(state) / 5;
+};
+var $author$project$Main$getX = function (state) {
+	var currentTrial = state.i;
+	var xFrac = function () {
+		switch (currentTrial.$) {
+			case 0:
+				var data = currentTrial.a;
+				return data.h;
+			case 1:
+				var data = currentTrial.a;
+				return data.h;
+			case 2:
+				var data = currentTrial.a;
+				return data.h;
+			default:
+				var data = currentTrial.a;
+				return data.h;
+		}
+	}();
+	return xFrac * state.z;
+};
+var $author$project$Main$getCueX = function (state) {
+	return $author$project$Main$getX(state) - ($author$project$Main$getCueWidth(state) / 2);
+};
+var $author$project$Main$getStartY = function (state) {
+	return (1 - $author$project$Main$params.aT) * state.f;
+};
+var $elm$svg$Svg$Attributes$height = _VirtualDom_attribute('height');
+var $elm$svg$Svg$trustedNode = _VirtualDom_nodeNS('http://www.w3.org/2000/svg');
+var $elm$svg$Svg$rect = $elm$svg$Svg$trustedNode('rect');
+var $elm$svg$Svg$Attributes$width = _VirtualDom_attribute('width');
+var $elm$svg$Svg$Attributes$x = _VirtualDom_attribute('x');
+var $elm$svg$Svg$Attributes$y = _VirtualDom_attribute('y');
+var $author$project$Main$drawCue = function (state) {
+	return state.aH ? A2(
+		$elm$core$List$cons,
+		A2(
+			$elm$svg$Svg$rect,
+			_List_fromArray(
+				[
+					$elm$svg$Svg$Attributes$x(
+					$elm$core$String$fromFloat(
+						$author$project$Main$getCueX(state) + $author$project$Main$drawPaddingX(state))),
+					$elm$svg$Svg$Attributes$y(
+					$elm$core$String$fromFloat(
+						$author$project$Main$getStartY(state))),
+					$elm$svg$Svg$Attributes$width(
+					$elm$core$String$fromFloat(
+						$author$project$Main$getCueWidth(state))),
+					$elm$svg$Svg$Attributes$height(
+					$elm$core$String$fromFloat(
+						$author$project$Main$getCueHeight(state))),
+					$elm$svg$Svg$Attributes$fill('rgb(255,255,255)')
+				]),
+			_List_Nil),
+		_List_Nil) : _List_Nil;
+};
+var $elm$svg$Svg$Attributes$fontFamily = _VirtualDom_attribute('font-family');
+var $elm$svg$Svg$Attributes$fontSize = _VirtualDom_attribute('font-size');
+var $author$project$Main$getFeedbackSize = function (state) {
+	return $author$project$Main$params.bp * state.f;
+};
+var $author$project$Main$makeCheckmarkPolygonPoints = F2(
+	function (_v0, w) {
+		var x = _v0.a;
+		var y = _v0.b;
+		return _List_fromArray(
+			[
+				_Utils_Tuple2(x - (w / 2), y - (w / 2)),
+				_Utils_Tuple2(x, y),
+				_Utils_Tuple2(x + w, y - w)
+			]);
+	});
+var $author$project$Main$makeCrossPolygonPoints = F2(
+	function (_v0, w) {
+		var x = _v0.a;
+		var y = _v0.b;
+		return _List_fromArray(
+			[
+				_Utils_Tuple2(x, y),
+				_Utils_Tuple2(x + (w / 2), y + (w / 2)),
+				_Utils_Tuple2(x, y),
+				_Utils_Tuple2(x + (w / 2), y - (w / 2)),
+				_Utils_Tuple2(x, y),
+				_Utils_Tuple2(x - (w / 2), y - (w / 2)),
+				_Utils_Tuple2(x, y),
+				_Utils_Tuple2(x - (w / 2), y + (w / 2))
+			]);
+	});
+var $elm$svg$Svg$Attributes$points = _VirtualDom_attribute('points');
+var $author$project$Main$pointsToString = function (points) {
+	if (!points.b) {
+		return '';
+	} else {
+		var _v1 = points.a;
+		var x = _v1.a;
+		var y = _v1.b;
+		var ps = points.b;
+		return $elm$core$String$fromFloat(x) + (',' + ($elm$core$String$fromFloat(y) + (' ' + $author$project$Main$pointsToString(ps))));
+	}
+};
+var $elm$svg$Svg$polyline = $elm$svg$Svg$trustedNode('polyline');
+var $elm$svg$Svg$Attributes$stroke = _VirtualDom_attribute('stroke');
+var $elm$svg$Svg$Attributes$strokeWidth = _VirtualDom_attribute('stroke-width');
+var $elm$svg$Svg$text = $elm$virtual_dom$VirtualDom$text;
+var $elm$svg$Svg$text_ = $elm$svg$Svg$trustedNode('text');
+var $author$project$Main$drawFeedback = function (state) {
+	var currentTrial = state.i;
+	if (currentTrial.$ === 3) {
+		var trialData = currentTrial.a;
+		var size = $author$project$Main$getFeedbackSize(state);
+		if ($author$project$Main$hasEnded(trialData)) {
+			if ($author$project$Main$result(trialData)) {
+				return A2(
+					$elm$core$List$cons,
+					A2(
+						$elm$svg$Svg$polyline,
+						_List_fromArray(
+							[
+								$elm$svg$Svg$Attributes$points(
+								$author$project$Main$pointsToString(
+									A2(
+										$author$project$Main$makeCheckmarkPolygonPoints,
+										_Utils_Tuple2(
+											(state.z / 2) + $author$project$Main$drawPaddingX(state),
+											state.f / 2),
+										$author$project$Main$getFeedbackSize(state)))),
+								$elm$svg$Svg$Attributes$stroke('rgb(0,255,0)'),
+								$elm$svg$Svg$Attributes$strokeWidth(
+								$elm$core$String$fromFloat(
+									$author$project$Main$getFeedbackSize(state) / 4))
+							]),
+						_List_Nil),
+					A2(
+						$elm$core$List$cons,
+						A2(
+							$elm$svg$Svg$text_,
+							_List_fromArray(
+								[
+									$elm$svg$Svg$Attributes$x(
+									$elm$core$String$fromFloat(
+										((state.z / 2) - (size * 0.70)) + $author$project$Main$drawPaddingX(state))),
+									$elm$svg$Svg$Attributes$y(
+									$elm$core$String$fromFloat((state.f / 2) + (1.5 * size))),
+									$elm$svg$Svg$Attributes$fontFamily('Lato'),
+									$elm$svg$Svg$Attributes$fontSize(
+									$elm$core$String$fromFloat(size * 0.4)),
+									$elm$svg$Svg$Attributes$fill('rgb(0,255,0)')
+								]),
+							_List_fromArray(
+								[
+									$elm$svg$Svg$text(
+									'+' + $elm$core$String$fromInt(
+										A2($elm$core$Basics$composeL, $author$project$Main$score, $author$project$Main$error)(trialData)))
+								])),
+						_List_Nil));
+			} else {
+				var suffix = ($author$project$Main$error(trialData) < 0) ? 'late' : 'early';
+				return A2(
+					$elm$core$List$cons,
+					A2(
+						$elm$svg$Svg$polyline,
+						_List_fromArray(
+							[
+								$elm$svg$Svg$Attributes$points(
+								$author$project$Main$pointsToString(
+									A2(
+										$author$project$Main$makeCrossPolygonPoints,
+										_Utils_Tuple2(
+											(state.z / 2) + $author$project$Main$drawPaddingX(state),
+											state.f / 2),
+										size))),
+								$elm$svg$Svg$Attributes$stroke('rgb(255,0,0)'),
+								$elm$svg$Svg$Attributes$strokeWidth(
+								$elm$core$String$fromFloat(size / 4))
+							]),
+						_List_Nil),
+					A2(
+						$elm$core$List$cons,
+						A2(
+							$elm$svg$Svg$text_,
+							_List_fromArray(
+								[
+									$elm$svg$Svg$Attributes$x(
+									$elm$core$String$fromFloat(
+										((state.z / 2) - (size * 0.70)) + $author$project$Main$drawPaddingX(state))),
+									$elm$svg$Svg$Attributes$y(
+									$elm$core$String$fromFloat((state.f / 2) + (1.5 * size))),
+									$elm$svg$Svg$Attributes$fontFamily('Lato'),
+									$elm$svg$Svg$Attributes$fontSize(
+									$elm$core$String$fromFloat(size * 0.4)),
+									$elm$svg$Svg$Attributes$fill('rgb(255,0,0)')
+								]),
+							_List_fromArray(
+								[
+									$elm$svg$Svg$text('too ' + suffix)
+								])),
+						_List_Nil));
+			}
+		} else {
+			return _List_Nil;
+		}
+	} else {
+		return _List_Nil;
+	}
+};
+var $author$project$Main$getRocketY = F2(
+	function (trialData, state) {
+		var flightDist = $author$project$Main$params.bg - $author$project$Main$params.aT;
+		var dt = $elm$time$Time$posixToMillis(trialData.ap) - $elm$time$Time$posixToMillis(trialData.aN);
+		var dy = dt / $author$project$Main$params.aL;
+		return state.f * (1 - ($author$project$Main$params.aT + (flightDist * dy)));
+	});
+var $author$project$Rocket$initialSeg = function (rocket) {
+	return {aE: 242.25, aJ: 0.0, aM: 242.25, aQ: 242.25, aR: rocket.dK, au: rocket.dK};
+};
+var $author$project$Rocket$makeTailSegments = F2(
+	function (n, seg) {
+		if (n <= 0) {
+			return _List_Nil;
+		} else {
+			var yDecay = 0.8;
+			var xDecay = 0.6;
+			var cDecay = 0.8;
+			var newSeg = {aE: seg.aE * cDecay, aJ: seg.aJ + (seg.au * (1.0 + (0.2 * yDecay))), aM: seg.aM * cDecay, aQ: seg.aQ * cDecay, aR: seg.aR * xDecay, au: seg.au * yDecay};
+			return _Utils_ap(
+				_List_fromArray(
+					[newSeg]),
+				A2($author$project$Rocket$makeTailSegments, n - 1, newSeg));
+		}
+	});
+var $elm$svg$Svg$Attributes$cx = _VirtualDom_attribute('cx');
+var $elm$svg$Svg$Attributes$cy = _VirtualDom_attribute('cy');
+var $elm$svg$Svg$ellipse = $elm$svg$Svg$trustedNode('ellipse');
+var $elm$svg$Svg$Attributes$rx = _VirtualDom_attribute('rx');
+var $elm$svg$Svg$Attributes$ry = _VirtualDom_attribute('ry');
+var $author$project$Rocket$segmentColor = function (seg) {
+	return 'rgb(' + ($elm$core$String$fromFloat(seg.aQ) + (',' + ($elm$core$String$fromFloat(seg.aM) + (',' + ($elm$core$String$fromFloat(seg.aE) + ')')))));
+};
+var $author$project$Rocket$viewSegment = F3(
+	function (x, y, seg) {
+		return A2(
+			$elm$svg$Svg$ellipse,
+			_List_fromArray(
+				[
+					$elm$svg$Svg$Attributes$cx(
+					$elm$core$String$fromFloat(x)),
+					$elm$svg$Svg$Attributes$cy(
+					$elm$core$String$fromFloat(y + seg.aJ)),
+					$elm$svg$Svg$Attributes$rx(
+					$elm$core$String$fromFloat(seg.aR)),
+					$elm$svg$Svg$Attributes$ry(
+					$elm$core$String$fromFloat(seg.au)),
+					$elm$svg$Svg$Attributes$fill(
+					$author$project$Rocket$segmentColor(seg))
+				]),
+			_List_Nil);
+	});
+var $author$project$Rocket$view = function (rocket) {
+	var tip = $author$project$Rocket$initialSeg(rocket);
+	return $elm$core$List$reverse(
+		A2(
+			$elm$core$List$map,
+			A2($author$project$Rocket$viewSegment, rocket.er, rocket.es),
+			_Utils_ap(
+				_List_fromArray(
+					[tip]),
+				A2($author$project$Rocket$makeTailSegments, 5, tip))));
+};
+var $author$project$Main$drawRocket = function (state) {
+	var currentTrial = state.i;
+	var _v0 = state.i;
+	if (_v0.$ === 3) {
+		var trialData = _v0.a;
+		var rocket = {
+			dK: $author$project$Main$getRocketRadius(state),
+			er: (trialData.h * state.z) + $author$project$Main$drawPaddingX(state),
+			es: A2($author$project$Main$getRocketY, trialData, state)
+		};
+		return $author$project$Rocket$view(rocket);
+	} else {
+		return _List_Nil;
+	}
+};
+var $author$project$Main$getTargetSize = function (state) {
+	return $author$project$Main$params.bC * state.f;
+};
+var $author$project$Main$getTargetY = function (state) {
+	return (1 - $author$project$Main$params.bg) * state.f;
+};
+var $elm$svg$Svg$polygon = $elm$svg$Svg$trustedNode('polygon');
+var $author$project$Main$drawTarget = function (state) {
+	var x = $author$project$Main$getX(state) + $author$project$Main$drawPaddingX(state);
+	return state.aj ? A2(
+		$elm$core$List$cons,
+		A2(
+			$elm$svg$Svg$polygon,
+			_List_fromArray(
+				[
+					$elm$svg$Svg$Attributes$points(
+					$author$project$Main$pointsToString(
+						A2(
+							$author$project$Main$makeCrossPolygonPoints,
+							_Utils_Tuple2(
+								x,
+								$author$project$Main$getTargetY(state)),
+							$author$project$Main$getTargetSize(state)))),
+					$elm$svg$Svg$Attributes$stroke('rgb(255,255,255)'),
+					$elm$svg$Svg$Attributes$strokeWidth(
+					$elm$core$String$fromFloat(
+						$author$project$Main$getTargetSize(state) / 4))
+				]),
+			_List_Nil),
+		_List_Nil) : _List_Nil;
+};
+var $elm$core$Basics$always = F2(
+	function (a, _v0) {
+		return a;
+	});
+var $mdgriffith$elm_ui$Internal$Model$unstyled = A2($elm$core$Basics$composeL, $mdgriffith$elm_ui$Internal$Model$Unstyled, $elm$core$Basics$always);
+var $mdgriffith$elm_ui$Element$html = $mdgriffith$elm_ui$Internal$Model$unstyled;
+var $elm$svg$Svg$svg = $elm$svg$Svg$trustedNode('svg');
+var $elm$svg$Svg$Attributes$viewBox = _VirtualDom_attribute('viewBox');
+var $author$project$Main$viewScreen = function (state) {
+	var safeWidth = state.z + (2 * $author$project$Main$drawPaddingX(state));
+	return A2(
+		$mdgriffith$elm_ui$Element$el,
+		_List_fromArray(
+			[
+				$mdgriffith$elm_ui$Element$centerX,
+				$mdgriffith$elm_ui$Element$centerY,
+				$mdgriffith$elm_ui$Element$inFront(
+				A2(
+					$mdgriffith$elm_ui$Element$el,
+					_List_fromArray(
+						[
+							$mdgriffith$elm_ui$Element$padding(12),
+							$mdgriffith$elm_ui$Element$alignTop,
+							$mdgriffith$elm_ui$Element$centerX
+						]),
+					$mdgriffith$elm_ui$Element$text(
+						'score: ' + $elm$core$String$fromInt(state.ay))))
+			]),
+		$mdgriffith$elm_ui$Element$html(
+			A2(
+				$elm$svg$Svg$svg,
+				_List_fromArray(
+					[
+						$elm$svg$Svg$Attributes$width(
+						$elm$core$String$fromFloat(safeWidth)),
+						$elm$svg$Svg$Attributes$height(
+						$elm$core$String$fromFloat(state.f)),
+						$elm$svg$Svg$Attributes$viewBox(
+						A2(
+							$elm$core$String$join,
+							' ',
+							A2(
+								$elm$core$List$map,
+								$elm$core$String$fromFloat,
+								_List_fromArray(
+									[0, 0, safeWidth, state.f])))),
+						$elm$svg$Svg$Attributes$fill('rgb(51,51,51)')
+					]),
+				A2(
+					$elm$core$List$cons,
+					A2(
+						$elm$svg$Svg$rect,
+						_List_fromArray(
+							[
+								$elm$svg$Svg$Attributes$width(
+								$elm$core$String$fromFloat(safeWidth)),
+								$elm$svg$Svg$Attributes$height(
+								$elm$core$String$fromFloat(state.f))
+							]),
+						_List_fromArray(
+							[
+								$elm$svg$Svg$text('foo')
+							])),
+					_Utils_ap(
+						$author$project$Main$drawCue(state),
+						_Utils_ap(
+							$author$project$Main$drawTarget(state),
+							_Utils_ap(
+								$author$project$Main$drawRocket(state),
+								$author$project$Main$drawFeedback(state))))))));
+};
 var $author$project$Main$viewExperiment = function (state) {
 	return _List_fromArray(
 		[
-			A2($author$project$Main$viewDebugLog, state.x, state.a),
+			A2($author$project$Main$viewDebugLog, state.w, state.a),
 			$author$project$Main$vertSeparator,
 			A2(
 			$mdgriffith$elm_ui$Element$column,
@@ -15335,7 +15347,7 @@ var $author$project$Main$viewExperiment = function (state) {
 				]),
 			_List_fromArray(
 				[
-					$author$project$Main$drawScreen(state)
+					$author$project$Main$viewScreen(state)
 				])),
 			$author$project$Main$vertSeparator,
 			A2(
@@ -15535,7 +15547,7 @@ var $author$project$Main$viewWelcome = function (state) {
 			]),
 		_List_fromArray(
 			[
-				A2($author$project$Main$viewDebugLog, state.x, state.a),
+				A2($author$project$Main$viewDebugLog, state.w, state.a),
 				A2(
 				$mdgriffith$elm_ui$Element$column,
 				_List_fromArray(

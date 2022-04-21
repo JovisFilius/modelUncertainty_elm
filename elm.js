@@ -14540,6 +14540,35 @@ var $author$project$Main$menuButton = F3(
 				3,
 				dot(radius)));
 	});
+var $mdgriffith$elm_ui$Element$paddingXY = F2(
+	function (x, y) {
+		if (_Utils_eq(x, y)) {
+			var f = x;
+			return A2(
+				$mdgriffith$elm_ui$Internal$Model$StyleClass,
+				$mdgriffith$elm_ui$Internal$Flag$padding,
+				A5(
+					$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+					'p-' + $elm$core$String$fromInt(x),
+					f,
+					f,
+					f,
+					f));
+		} else {
+			var yFloat = y;
+			var xFloat = x;
+			return A2(
+				$mdgriffith$elm_ui$Internal$Model$StyleClass,
+				$mdgriffith$elm_ui$Internal$Flag$padding,
+				A5(
+					$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+					'p-' + ($elm$core$String$fromInt(x) + ('-' + $elm$core$String$fromInt(y))),
+					yFloat,
+					xFloat,
+					yFloat,
+					xFloat));
+		}
+	});
 var $mdgriffith$elm_ui$Internal$Model$AsRow = 0;
 var $mdgriffith$elm_ui$Internal$Model$asRow = 0;
 var $mdgriffith$elm_ui$Element$row = F2(
@@ -14684,11 +14713,18 @@ var $author$project$Main$menuPanel = function (state) {
 									$mdgriffith$elm_ui$Element$el,
 									_List_fromArray(
 										[
-											$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill),
-											$mdgriffith$elm_ui$Element$Border$width(1),
-											$mdgriffith$elm_ui$Element$Border$color($author$project$Main$grey)
+											A2($mdgriffith$elm_ui$Element$paddingXY, 0, 20),
+											$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
 										]),
-									$mdgriffith$elm_ui$Element$none),
+									A2(
+										$mdgriffith$elm_ui$Element$el,
+										_List_fromArray(
+											[
+												$mdgriffith$elm_ui$Element$Border$width(1),
+												$mdgriffith$elm_ui$Element$Border$color($author$project$Main$grey),
+												$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
+											]),
+										$mdgriffith$elm_ui$Element$none)),
 									A2(
 									$mdgriffith$elm_ui$Element$row,
 									_List_fromArray(

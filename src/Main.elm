@@ -1608,11 +1608,15 @@ menuPanel state =
                             , label = text "Save"
                             }
                         , el
-                            [ width fill
-                            , Border.width 1
-                            , Border.color grey
+                            [ paddingXY 0 20
+                            , width fill
                             ]
-                            none
+                            <| el
+                                [ Border.width 1
+                                , Border.color grey
+                                , width fill
+                                ]
+                                none
                         , row
                             [ width fill
                             , spacing 20

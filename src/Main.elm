@@ -219,7 +219,7 @@ todo =
 help : List String
 help =
     [ "This is an experiment in the form of a game. It is designed to measure the human capability of learning and estimating intervals of time. The experiment consists of many similar but independent trials."
-    , "The goal of the game is simple: launch a rocket from the bottom of the screen to hit a target at the top. However, the target only appears after a specific interval on each trial. Therefore, it is important to launch the rocket at the right time!"
+    , "The goal of the game is simple: launch a rocket from the bottom of the screen, to hit a target at the top. However, the target only appears after a specific interval on each trial. Therefore, it is important to launch the rocket at the right time!"
     , "The rocket stops moving as soon as the target appears. When this happens, the trial is over and points are awarded based on the proximity to the target. It is your task to score as many points as possible before the game is over."
     , "Each trial is initiated with a button press: both the 'z' and the '/' button may be used for this. Then, after a short random interval, a cue appears at the bottom of the screen, to indicate the start of the trial. From this moment on, it is possible to launch the rocket by pressing the Space bar." 
     , "Good luck!"
@@ -240,10 +240,7 @@ main =
         , audio = renderAudio
         , audioPort = { toJS = audioPortToJS, fromJS = audioPortFromJS }
         }
-
 port audioPortToJS : Encode.Value -> Cmd msg
-
-
 port audioPortFromJS : (Decode.Value -> msg) -> Sub msg
 
 
@@ -1041,6 +1038,12 @@ view _ programState =
             ]
         , Font.color lightgray
         , Background.color background
+        , inFront 
+            <| viewDebugLog
+                ( case programState of
+                    Initializing state -> (state.debug, state.debugLog)
+                    Running state -> (state.debug, state.debugLog)
+                )
         ]
         ( case programState of
             Initializing state ->
@@ -1061,24 +1064,17 @@ view _ programState =
 
 viewExperiment : ExperimentState -> List (Element Msg)
 viewExperiment state =
-    [ viewDebugLog state.debug state.debugLog
+    [ el [width fill] none
     , vertSeparator
     , column
-        [ alignLeft
-        , centerY
-        , height fill
+        [ height fill
         , width <| fillPortion 6
         -- , explain Debug.todo
         ]
         [ viewScreen state
         ]
     , vertSeparator
-    , column
-        [ width fill
-        , height fill
-        ]
-        [
-        ]
+    , el [width fill] none
     ]
 
 viewSessionEnd : ExperimentState -> List (Element Msg)
@@ -1118,28 +1114,20 @@ viewSessionEnd state =
         ]
     ]
 
-viewDebugLog : Bool -> List String -> Element Msg
-viewDebugLog doDebug log =
-    column
-        [ centerX
-        , centerY
-        , height fill
-        , width fill
-        ]
-        [ ( if doDebug then
-            column
-                [ scrollbarY
-                , scrollbarX
-                , centerY
-                , height fill
-                -- , width <| px 300
-                , width fill
-                , padding 10
-                ] <| viewDebugEntries log
-            else
-                none
-            )
-        ]
+viewDebugLog : (Bool, List String) -> Element Msg
+viewDebugLog (doDebug, log) =
+    if doDebug then
+        column
+            [ scrollbarY
+            , scrollbarX
+            , alignLeft
+            , centerY
+            , height <| px 900
+            , width <| px 300
+            , padding 10
+            ] <| viewDebugEntries log
+    else
+        none
 
 viewDebugEntries : List String -> List (Element Msg)
 viewDebugEntries log =
@@ -1156,7 +1144,7 @@ viewWelcome state =
         [ width fill
         , height fill
         ]
-        [ viewDebugLog state.debug state.debugLog
+        [ el [width fill] none
         , column
             [ centerX
             , centerY
@@ -1180,17 +1168,28 @@ viewWelcome state =
                 ]
                <| text <| "the model uncertainty experiment"
             , viewHelp state
-            ]
-            ++
-            ( if state.showHelp then
-                []
-            else
-                [ el [height <| fillPortion 2] none
-                , el
-                    [ centerX
-                    , Font.size 32
-                    ]
-                    <| text "session type"
+            , el
+                [ height
+                    <| if state.showHelp then
+                            (px 0)
+                        else 
+                            (fillPortion 2)
+                ]
+                none
+            , column
+                ( [ centerX
+                  , Font.size 32
+                  ]
+                ++
+                  (if state.showHelp then
+                      [ height <| px 0
+                      , clipY
+                      ]
+                  else
+                      []
+                  )
+                )
+                [ el [centerX] <| text "session type"
                 , row
                     [ centerX
                     , alignBottom
@@ -1227,16 +1226,21 @@ viewWelcome state =
                         )
                         <| text "Test"
                     ]
-                , row
-                    [ height <| fillPortion 3
-                    , centerX
-                    , spacing 20
-                    ]
-                    [ text "press Space to start"
-                    ]
                 ]
-            )
-        , column [width fill] []
+            , row
+                [ height <|
+                    if state.showHelp then
+                        px 0
+                    else
+                        fillPortion 3
+                , clipY
+                , centerX
+                , spacing 20
+                ]
+                [ text "press Space to start"
+                ]
+            ]
+        , el [width fill] none
         ]
 
 viewHelp : SetupState -> Element Msg
@@ -1291,11 +1295,11 @@ viewHelp state =
                 [ (if state.helpPage > 0 then
                     el
                         [ onClick <| SetHelpPage (state.helpPage - 1)
-                        , padding 20
+                        , width <| px 50
                         ]
-                        <| arrowHeadLeft 45
+                        <| el [centerX] <| arrowHeadLeft 45
                 else
-                    none
+                    el [width <| px 50] none
                 )
                 , textColumn
                     [ spacing <| 2*radius
@@ -1308,11 +1312,11 @@ viewHelp state =
                 , (if state.helpPage + 1 < (List.length help) then
                     el
                         [ onClick <| SetHelpPage (state.helpPage + 1)
-                        , padding 20
+                        , width <| px 50
                         ]
-                        <| arrowHeadRight 45
+                        <| el [centerX] <| arrowHeadRight 45
                 else
-                    none
+                    el [width <| px 50] none
                 )
                 ]
             , el
@@ -1322,12 +1326,7 @@ viewHelp state =
                 , onClick ShowHelp
                 ]
                 <| arrowHeadsUp 75
-            , el
-                [ alignBottom
-                , width fill
-                , Border.widthEach {top = 0, left = 0, right = 0, bottom = 1}
-                ]
-                none
+            , horzSeparator
             ]
         else
             column
@@ -1337,7 +1336,7 @@ viewHelp state =
                 , onClick ShowHelp
                 --, explain Debug.todo
                 ]
-                [ horzRule 
+                [ horzSeparator
                 , el
                     [ centerX
                     , padding 13
@@ -1776,6 +1775,48 @@ white = rgb 1 1 1
 graytint : Float -> Color
 graytint f =
     rgb f f f
+
+horzSeparator : Element msg
+horzSeparator =
+    let
+        sep : Color -> Element msg
+        sep color =
+            el
+                [ width <| fillPortion 3
+                , Border.widthEach
+                    { bottom=1
+                    , left=0
+                    , right=0
+                    , top=0
+                    }
+                , Border.color color
+                ]
+                none
+
+        tints : List Float
+        tints =
+            [ 0.25
+            , 0.275
+            , 0.3
+            , 0.325
+            , 0.35
+            , 0.375
+            , 0.4
+            , 0.425
+            , 0.45
+            , 0.475
+            , 0.5
+            , 0.525
+            , 0.55
+            ]
+
+    in
+        row
+            [ width fill
+            ]
+            ( (List.map (sep << graytint) tints)
+              ++ ((List.reverse << List.map (sep << graytint)) tints)
+            )
 
 
 vertSeparator : Element msg

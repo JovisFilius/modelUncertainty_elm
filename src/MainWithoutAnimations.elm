@@ -1,7 +1,4 @@
-port module Main exposing (..)
-
-import Animator
-import Animator.Inline
+port module MainWithoutAnimations exposing (..)
 
 import Audio
     exposing

@@ -1,5 +1,11 @@
 module Scratchpad exposing (..)
 
+import Animator
+import Animator.Inline
+
+import  Color
+
+import Dict exposing (Dict)
 
 import Browser
 import Html exposing (Html)
@@ -20,10 +26,12 @@ import Element as E exposing
     , inFront
     , none
     , padding
+    , fromRgb
     )
 import Element.Border as Border
 import Element.Background as Background
-import Element.Events exposing (onClick)
+import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
+import Element.Font as Font
 import Element.Input as I
 
 import String exposing (fromInt, fromFloat)
@@ -51,14 +59,23 @@ main = Browser.element
 -- MODEL
 
 
-type alias Model = Bool
-    -- { menu : String
-    -- }
+type alias Model = 
+    { menuOpen : Bool
+    , checked : Animator.Timeline Bool
+    , buttonStates : Animator.Timeline (Dict Id Bool)
+    }
+
+
+type alias Id = String
 
 
 init : () -> (Model, Cmd Msg)
 init _ =
-    ( False
+    ( { menuOpen = False
+      , checked = Animator.init False
+      , buttonStates = Animator.init <|
+            Dict.fromList [ ("Uno", False), ("Dos", False), ("Tres", False) ]
+      }
     , Cmd.none
     )
 
@@ -69,18 +86,50 @@ init _ =
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
+    let
+        maybeAlways val =
+            Maybe.map (\_ -> val)
+
+        setButtonState id newState =
+            Dict.update id (maybeAlways newState) <| Animator.current model.buttonStates
+
+    in
     case msg of
         MenuOpen ->
-            ( True
+            ( { model | menuOpen = True }
             , Cmd.none
             )
         MenuClose ->
-            ( False
+            ( { model | menuOpen = False }
             , Cmd.none
             )
         Download ->
             ( model
             , Download.string "foo" "text/csv" "foo"
+            )
+        SetChecked bool ->
+            ( { model
+                | checked = Animator.go Animator.quickly bool model.checked
+              }
+            , Cmd.none
+            )
+        AnimationStep newTime ->
+            ( Animator.update newTime animator model
+            , Cmd.none
+            )
+        ElementHover id ->
+            ( { model
+                | buttonStates =
+                    Animator.go Animator.slowly (setButtonState id True) model.buttonStates
+              }
+            , Cmd.none
+            )
+        ElementUnhover id ->
+            ( { model
+                | buttonStates =
+                    Animator.go Animator.slowly (setButtonState id False) model.buttonStates
+              }
+            , Cmd.none
             )
             
 
@@ -89,14 +138,18 @@ type Msg
     = MenuOpen
     | MenuClose
     | Download
-
+    | SetChecked Bool
+    | ElementHover Id
+    | ElementUnhover Id
+    | AnimationStep Posix
 
 
 -- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model = Sub.none
+subscriptions model =
+    Animator.toSubscription AnimationStep model animator
 
 
 
@@ -146,12 +199,27 @@ view model =
                 ]
             , column
                 [centerX, centerY] 
-                [ E.text (if model then "menu open" else "menu closed")
+                [ E.text (if model.menuOpen then "menu open" else "menu closed")
                 , I.button
                     []
                     { label = E.text "download foo"
                     , onPress = Just Download
                     }
+                , I.checkbox
+                    [ E.htmlAttribute <| Animator.Inline.opacity model.checked <|
+                        \checked ->
+                            if checked then
+                                Animator.at 1
+
+                            else
+                                Animator.at 0
+                    ]
+                    { onChange = SetChecked
+                    , icon = I.defaultCheckbox
+                    , checked = Animator.current model.checked
+                    , label = I.labelLeft [] <| E.text "I am an animated checkbox!"
+                    }
+                , viewButtons model
                 ]
             , column
                 [ E.alignRight
@@ -162,9 +230,72 @@ view model =
             ]
 
 
+viewButtons : Model -> Element Msg
+viewButtons model =
+    let
+        buttonState id =
+            Maybe.withDefault False <| Dict.get id <| Animator.current model.buttonStates
+
+        borderColor id =
+            fromRgb <| Color.toRgba <|
+                if buttonState id then
+                    Color.blue
+
+                else
+                    Color.black
+
+        fontColor id =
+            fromRgb <| Color.toRgba <|
+                if buttonState id then
+                    Color.white
+
+                else
+                    Color.black
+
+        bgColor id =
+            fromRgb <| Color.toRgba <|
+                Animator.color model.buttonStates <|
+                    \buttonStates ->
+                        if Maybe.withDefault False <| Dict.get id buttonStates then
+                            Color.lightBlue
+
+                        else
+                            Color.white
+
+        fontSize id = 20
+           -- round <| Animator.linear model.buttonStates <|
+           --     \buttonStates ->
+           --         Animator.at <|
+           --             if Maybe.withDefault False <| Dict.get id buttonStates then
+           --                 28
+           --             else
+           --                 20
+
+        button id =
+            el
+                [ E.width <| px 200
+                , E.height <| px 60
+                , Border.width 3
+                , Border.rounded 6
+                , Border.color <| borderColor id
+                , Background.color <| bgColor id
+                , Font.color <| fontColor id
+                , Font.size <| fontSize id
+                , padding 10
+                , onMouseEnter <| ElementHover id
+                , onMouseLeave <| ElementUnhover id
+                ]
+            <|
+                (el [ centerX, centerY ] <| E.text <| "Button " ++ id)
+    in
+    [ "Uno", "Dos", "Tres" ]
+        |> List.map button
+        |> column [E.spacing 10, centerX, centerY ]
+
+
 viewMenu : Model -> Element Msg
 viewMenu model =
-    if model then
+    if model.menuOpen then
         menuPanel
             [ alignRight
             , alignTop
@@ -232,6 +363,28 @@ pointsToString points =
 
         (x,y)::ps ->
             fromFloat x ++ "," ++ fromFloat y ++ " " ++ pointsToString ps
+
+
+
+
+-- ANIMATOR
+
+
+animator : Animator.Animator Model
+animator =
+    Animator.animator
+        |> Animator.watchingWith
+            .buttonStates
+            (\newButtonStates model ->
+                { model | buttonStates = newButtonStates }
+            )
+            (\buttonStates ->
+                List.any identity <| Dict.values buttonStates
+            )
+
+
+
+-- COLOR
 
 
 lightgrey = rgb 0.8 0.8 0.8

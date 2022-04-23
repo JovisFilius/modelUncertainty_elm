@@ -220,11 +220,16 @@ todo =
 
 help : List String
 help =
-    [ "Welcome! This is an experiment in the form of a game. It is designed to investigate the human ability to learn and predict intervals of time. The experiment consists of independent but similar trials."
+    [ """Welcome!
+    This is an experiment in the form of a game. It is designed to investigate the human ability to learn and predict intervals of time. The experiment consists of independent but similar trials.
+    """
     , "The goal of the game is simple: launch a rocket from the bottom of the screen, to hit a target at the top. However, the target only appears after a specific interval on each trial. Therefore, it is important to launch the rocket at the right time!"
     , "The rocket stops moving as soon as the target appears. When this happens, the trial is over and points are awarded based on the proximity to the target. It is your task to score as many points as possible before the game is over."
-    , "Each trial is initiated with a button press: both the 'z' and the '/' button may be used for this. Then, after a short random interval, a cue appears at the bottom of the screen, to indicate the start of the trial. From this moment on, it is possible to launch the rocket by pressing the Space bar." 
-    , "The game comes in two versions, a 'Train' and a 'Test' one. Make sure to select the right type before you start. Good luck!"
+    , """Each trial follows the same procedure: You initiate it by pressing, either the 'z' or the '/' button. Then, after a short random interval, a cue at the bottom of the screen indicates the start of the trial. From this moment on, it is up to you to to launch the rocket at the right time by pressing the Space bar.
+    """ 
+    , """The game comes in two versions, a 'Train' and a 'Test' one. Make sure to select the right type before you start.
+    Good luck!
+    """
     ]
 
 
@@ -887,10 +892,19 @@ updateExperimentState msg ({currentTrial} as state) =
                 (trials2Csv state.results)
             )
 
-        AnimationStep _ newTime ->
-            ( Animator.update newTime experimentAnimator state
-            , Cmd.none
-            )
+        AnimationStep aType newTime ->
+            case aType of
+                ToggleMenu ->
+                    ( Animator.update newTime experimentAnimator state
+                    , Cmd.none
+                    )
+                    
+                TextAlpha ->
+                    ( Animator.update newTime textAlphaAnimator2 state
+                    , Cmd.none
+                    )
+
+                _ -> (state, Cmd.none)
 
         _ ->
             ( state, Cmd.none )
@@ -1371,7 +1385,7 @@ viewHelp state =
                     else
                         Animator.at 0
                             |> Animator.leaveLate 1
-            
+
 
         viewHelpPage : Int -> Element Msg
         viewHelpPage i =
@@ -1398,12 +1412,10 @@ viewHelp state =
                         , alpha pageModifier
                         ]
                         (case helpText of
-                            Just str ->
-                                [ paragraph
-                                    []
-                                    [ text str
-                                    ]
-                                ]
+                            Just strs ->
+                                List.map
+                                    (\str -> paragraph [] [ text str ])
+                                    (String.lines strs)
                             Nothing ->
                                 []
                         )
@@ -2041,7 +2053,7 @@ menuPanel state =
         buttonWidth = 30
         buttonHeight = 48
 
-        menuWidth = 290
+        menuWidth = 300
         menuHeight = 350
         
         modifier = 

@@ -26,6 +26,8 @@ import Browser.Dom
         , getViewport
         )
 
+import Color
+
 import Element exposing (..)
 import Element.Input
     exposing
@@ -41,7 +43,7 @@ import Element.Input
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events
-    exposing (onClick)
+    exposing (onClick, onLoseFocus)
 import Element.Font as Font
 
 import File.Download as Download
@@ -123,7 +125,7 @@ todo =
     , P "Welcome screen"
             [ Done "Replace button with 'press space to start'"
             , Canceled "Have dropdowns to choose the session index"
-            , Do Low "Animate (i.e. fade in/out) the 'press space to start' string"
+            , Done "Animate (i.e. fade in/out) the 'press space to start' string"
             , P  "Show help"
                 [ Done "Show help button on welcome screen"
                 , Done "Replace help button in lower corner of screen with horizontal bar and downward arrow (i.e. to signal 'expandable') below the main title and expand the help section when it is clicked"
@@ -207,7 +209,7 @@ todo =
             ]
     , P "Debug Log"
         [ Done "Show new debug messages at the top -> append to head of debugLog"
-        , Do Low "Make debugLog a floating object"
+        , Done "Make debugLog a floating object"
         ]
     ]
 
@@ -218,11 +220,11 @@ todo =
 
 help : List String
 help =
-    [ "This is an experiment in the form of a game. It is designed to measure the human capability of learning and estimating intervals of time. The experiment consists of many similar but independent trials."
+    [ "Welcome! This is an experiment in the form of a game. It is designed to investigate the human ability to learn and predict intervals of time. The experiment consists of independent but similar trials."
     , "The goal of the game is simple: launch a rocket from the bottom of the screen, to hit a target at the top. However, the target only appears after a specific interval on each trial. Therefore, it is important to launch the rocket at the right time!"
     , "The rocket stops moving as soon as the target appears. When this happens, the trial is over and points are awarded based on the proximity to the target. It is your task to score as many points as possible before the game is over."
     , "Each trial is initiated with a button press: both the 'z' and the '/' button may be used for this. Then, after a short random interval, a cue appears at the bottom of the screen, to indicate the start of the trial. From this moment on, it is possible to launch the rocket by pressing the Space bar." 
-    , "Good luck!"
+    , "The game comes in two versions, a 'Train' and a 'Test' one. Make sure to select the right type before you start. Good luck!"
     ]
 
 
@@ -257,9 +259,10 @@ type alias SetupState =
     { debug : Bool
     , debugLog : List String
     , sessionType : SessionType
-    , showHelp : Bool
-    , helpPage : Int
+    , showHelp : Animator.Timeline Bool
+    , helpPage : Animator.Timeline Int
     , beep : Maybe Audio.Source
+    , textAlpha : Animator.Timeline ()
     }
 
 
@@ -273,10 +276,11 @@ type alias ExperimentState =
         , cue : Bool
         , target : Bool
         , debug : Bool
-        , menu : Bool
+        , showMenu : Animator.Timeline Bool
         , totalScore : Int
         , beep : Maybe Audio.Source
         , beepAt : Maybe Posix
+        , textAlpha : Animator.Timeline ()
         }
 
 
@@ -286,9 +290,10 @@ init _ =
         { debug = False
         , debugLog = []
         , sessionType = Train
-        , showHelp = False
-        , helpPage = 0
+        , showHelp = Animator.init False
+        , helpPage = Animator.init 0
         , beep = Nothing
+        , textAlpha = Animator.init ()
         }
     , Cmd.none
     , Audio.loadAudio
@@ -318,11 +323,12 @@ initExperiment programState profile x =
                 , cue = False
                 , target = False
                 , debug = state.debug
-                , menu = False
+                , showMenu = Animator.init False
                 , sessionType = state.sessionType
                 , totalScore = 0
                 , beep = state.beep
                 , beepAt = Nothing
+                , textAlpha = state.textAlpha
                 }
 
         _ -> programState
@@ -417,7 +423,7 @@ type SessionType
 nTrials : SessionType -> Int
 nTrials s =
     case s of
-        Train -> 5--360
+        Train -> 360
         Test -> 650
 
 
@@ -504,12 +510,12 @@ getModelId iTr sType =
 
 
 type Msg
-    = ShowHelp
+    = ShowHelp Bool
     | SetHelpPage Int
     | SetDebugging Bool
     | HeightChanged Int
-    | MenuOpen
-    | MenuClose
+    | MenuToggle Bool
+    | BackgroundClick
     | DownloadResults
     | Debug String
     | NoOp
@@ -526,6 +532,14 @@ type Msg
     | LaunchRocket Posix
     | StepRocket Posix
     | ShowTarget Posix
+    | AnimationStep AnimationType Posix
+
+
+type AnimationType
+    = ToggleHelp
+    | ChangeHelpPage
+    | ToggleMenu
+    | TextAlpha
 
 
 update : AudioData -> Msg -> ProgramState -> (ProgramState, Cmd Msg, AudioCmd Msg)
@@ -563,14 +577,17 @@ update _ msg programState =
 updateSetupState : Msg -> SetupState -> (SetupState, Cmd Msg)
 updateSetupState msg state =
     case msg of
-        ShowHelp ->
-            ( { state | showHelp = not state.showHelp }
+        ShowHelp bool ->
+            ( { state | showHelp = Animator.go Animator.quickly bool state.showHelp }
             , Cmd.none
             )
 
         SetHelpPage i ->
             if i >= 0 && i < (List.length help) then
-                ( { state | helpPage = i }
+                ( { state
+                    | helpPage = Animator.go Animator.quickly i state.helpPage
+                    , debugLog = ("SetHelpPage ["++fromInt i++"]") :: state.debugLog
+                  }
                 , Cmd.none
                 )
             else
@@ -594,9 +611,31 @@ updateSetupState msg state =
             )
 
         SpacePressed ->
-            ( state
-            , Task.perform (\_ -> NextTrial) Time.now
-            )
+            let
+                helpPage = Animator.current state.helpPage
+                showHelp = Animator.current state.showHelp
+            in
+            if (helpPage + 1) >= (List.length help) then
+                if (not showHelp) then
+                    ( state
+                    , Task.perform (\_ -> NextTrial) Time.now
+                    )
+                else
+                    ( state
+                    , Task.perform (\_ -> ShowHelp False) Time.now
+                    )
+            else if not showHelp then
+                ( state
+                , Task.perform (\_ -> ShowHelp True) Time.now
+                )
+            else if (helpPage + 1) < List.length help then
+                ( state
+                , Task.perform (\_ -> SetHelpPage <| helpPage + 1) Time.now
+                )
+            else
+                ( state
+                , Task.perform (\_ -> NextTrial) Time.now
+                )
 
         SetDebugging bool ->
             ( { state | debug = bool }
@@ -607,6 +646,25 @@ updateSetupState msg state =
             ( { state | debugLog = str::state.debugLog }
             , Cmd.none
             )
+
+        AnimationStep aType newTime ->
+            case aType of
+                ChangeHelpPage ->
+                    ( Animator.update newTime helpPageAnimator state
+                    , Cmd.none
+                    )
+
+                ToggleHelp ->
+                    ( Animator.update newTime helpVisibilityAnimator state
+                    , Cmd.none
+                    )
+
+                TextAlpha ->
+                    ( Animator.update newTime textAlphaAnimator1 state
+                    , Cmd.none
+                    )
+
+                _ -> (state, Cmd.none)
 
         _ ->
             (state, Cmd.none)
@@ -807,13 +865,13 @@ updateExperimentState msg ({currentTrial} as state) =
             , Cmd.none
             )
 
-        MenuOpen ->
-            ( { state | menu = True }
+        MenuToggle bool ->
+            ( { state | showMenu = Animator.go Animator.veryQuickly bool state.showMenu }
             , Cmd.none
             )
 
-        MenuClose ->
-            ( { state | menu = False }
+        BackgroundClick ->
+            ( { state | showMenu = Animator.go Animator.veryQuickly False state.showMenu }
             , Cmd.none
             )
 
@@ -827,6 +885,11 @@ updateExperimentState msg ({currentTrial} as state) =
                 )
                 "text/csv"
                 (trials2Csv state.results)
+            )
+
+        AnimationStep _ newTime ->
+            ( Animator.update newTime experimentAnimator state
+            , Cmd.none
             )
 
         _ ->
@@ -980,10 +1043,22 @@ hasEnded trialData =
 subscriptions : AudioData -> ProgramState -> Sub Msg
 subscriptions _ programState =
     Sub.batch
+        <|
         [ rocketAnimationSub programState
         , onKeyPress keyDecoder
         , onResize (\w h -> HeightChanged h)
         ]
+        ++ (case programState of
+                Running state ->
+                    [ Animator.toSubscription (AnimationStep ToggleMenu) state experimentAnimator
+                    , Animator.toSubscription (AnimationStep TextAlpha) state textAlphaAnimator2
+                    ]
+                Initializing state ->
+                    [ Animator.toSubscription (AnimationStep ToggleHelp) state helpVisibilityAnimator
+                    , Animator.toSubscription (AnimationStep ChangeHelpPage) state helpPageAnimator
+                    , Animator.toSubscription (AnimationStep TextAlpha) state textAlphaAnimator1
+                    ]
+            )
 
 rocketAnimationSub : ProgramState -> Sub Msg
 rocketAnimationSub programState =
@@ -1038,6 +1113,7 @@ view _ programState =
             ]
         , Font.color lightgray
         , Background.color background
+        , clip
         , inFront 
             <| viewDebugLog
                 ( case programState of
@@ -1108,6 +1184,13 @@ viewSessionEnd state =
         , row
             [ height <| fillPortion 3
             , centerX
+            , alpha <|
+                Animator.move
+                    state.textAlpha
+                    (\_ -> Animator.loop
+                        (Animator.millis 2200)
+                        (Animator.wave 0.3 1)
+                    )
             ]
             [ text "press Space to download your data"
             ]
@@ -1140,9 +1223,26 @@ viewDebugEntries log =
 
 viewWelcome : SetupState -> Element Msg
 viewWelcome state = 
+    let
+        showHelp = Animator.current state.showHelp
+        helpPage = Animator.current state.helpPage
+
+        modifier = 
+            Animator.linear state.showHelp <|
+                \b ->
+                    if b then
+                        Animator.at 0
+                    else
+                        Animator.at 1
+
+        animatedSize = (px << round << (*) modifier)
+    in
     row
         [ width fill
         , height fill
+        , clipY
+        , clipX
+        --, explain Debug.todo
         ]
         [ el [width fill] none
         , column
@@ -1151,16 +1251,11 @@ viewWelcome state =
             , height fill
             , width <| fillPortion 3
             , padding 75
+            , clipY
             --, explain Debug.todo
             ]
-            <|
-            ( if state.showHelp then
-                none
-            else
-                heightFillerW 3
-            )
-            ::
-            [ el
+            [ heightFillerW 3
+            , el
                 [ centerX
                 , Font.light
                 , Font.size 64
@@ -1169,26 +1264,16 @@ viewWelcome state =
                <| text <| "the model uncertainty experiment"
             , viewHelp state
             , el
-                [ height
-                    <| if state.showHelp then
-                            (px 0)
-                        else 
-                            (fillPortion 2)
+                [ height <| fillPortion 2
                 ]
                 none
             , column
-                ( [ centerX
-                  , Font.size 32
-                  ]
-                ++
-                  (if state.showHelp then
-                      [ height <| px 0
-                      , clipY
-                      ]
-                  else
-                      []
-                  )
-                )
+                [ centerX
+                , Font.size 32
+                , clipY
+                , height <| animatedSize 142
+                , alpha modifier
+                ]
                 [ el [centerX] <| text "session type"
                 , row
                     [ centerX
@@ -1228,16 +1313,25 @@ viewWelcome state =
                     ]
                 ]
             , row
-                [ height <|
-                    if state.showHelp then
-                        px 0
-                    else
-                        fillPortion 3
+                [ height <| fillPortion 3
                 , clipY
                 , centerX
                 , spacing 20
+                , height <| px <| 28 + (round <| 160 * modifier)
+                , alpha <|
+                    Animator.move
+                        state.textAlpha
+                        (\_ -> Animator.loop
+                            (Animator.millis 2200)
+                            (Animator.wave 0.3 1)
+                        )
                 ]
-                [ text "press Space to start"
+                [ text <|
+                    if (not showHelp) && (helpPage + 1) >= (List.length help) then
+                        "press Space to start"
+                    else
+                        "press Space"
+                    
                 ]
             ]
         , el [width fill] none
@@ -1246,6 +1340,9 @@ viewWelcome state =
 viewHelp : SetupState -> Element Msg
 viewHelp state =
     let 
+        showHelp = Animator.current state.showHelp
+        helpPage = Animator.current state.helpPage
+
         radius = 12
         textWidth = 750
         textPadding = 30
@@ -1258,25 +1355,63 @@ viewHelp state =
         blue =  (el [Font.color <| rgb 0 0 1])
         cyan =  (el [Font.color <| rgb 0 1 1])
 
-        viewHelpPage : Int -> List (Element Msg)
+        modifier = 
+            Animator.linear state.showHelp <|
+                \b ->
+                    if b then
+                        Animator.at 1
+                    else
+                        Animator.at 0
+
+        lateModifier =
+            Animator.linear state.showHelp <|
+                \b ->
+                    if b then
+                        Animator.at 1
+                    else
+                        Animator.at 0
+                            |> Animator.leaveLate 1
+            
+
+        viewHelpPage : Int -> Element Msg
         viewHelpPage i =
-            let
-                helpText = getListEntry i help
-            in
-                case helpText of
-                    Just str ->
-                        [ paragraph
-                            []
-                            [ text str
-                            ]
+            if i >= List.length help then
+                none
+            else
+                let
+                    helpText = getListEntry i help
+                    pageModifier =
+                        Animator.linear state.helpPage <|
+                            \pageNum ->
+                                if pageNum == i then
+                                    Animator.at 1
+                                else
+                                    Animator.at 0
+                in
+                    textColumn
+                        [ spacing <| 2*radius
+                        , paddingXY 0 5
+                        , Font.light
+                        , Font.color white
+                        , Font.size <| round <| 8 + 24 * pageModifier
+                        , width <| px <| round <| pageModifier * (textWidth - 130)
+                        , alpha pageModifier
                         ]
-                    Nothing ->
-                        []
+                        (case helpText of
+                            Just str ->
+                                [ paragraph
+                                    []
+                                    [ text str
+                                    ]
+                                ]
+                            Nothing ->
+                                []
+                        )
                 
     in
-    if state.showHelp then
         column
             [ centerX
+            --, explain Debug.todo
             --, Background.color lightgray
             --, Font.color darkgray
            -- , Font.family
@@ -1285,33 +1420,33 @@ viewHelp state =
            --     ]
             --, Font.light
             , width <| px helpWidth
-            , height fill
-            , onClick NoOp
             --, Border.rounded radius
             ]
             [ row
                 [ centerY
+                , height <| px <| round <| modifier * 550
+                , alpha lateModifier
                 ]
-                [ (if state.helpPage > 0 then
+                [ (if helpPage > 0 then
                     el
-                        [ onClick <| SetHelpPage (state.helpPage - 1)
+                        [ onClick <| SetHelpPage (helpPage - 1)
                         , width <| px 50
                         ]
                         <| el [centerX] <| arrowHeadLeft 45
                 else
                     el [width <| px 50] none
                 )
-                , textColumn
-                    [ spacing <| 2*radius
-                    , Font.light
-                    , Font.color white
-                    , Font.size 32
+                , row
+                    [ width fill
+                    , centerX
+                    , clip
+                    , height <| px 550
                     , paddingXY textPadding 0
                     ]
-                    <| viewHelpPage state.helpPage
-                , (if state.helpPage + 1 < (List.length help) then
+                    <| List.map viewHelpPage <| List.range 0 (List.length help)
+                , (if helpPage + 1 < (List.length help) then
                     el
-                        [ onClick <| SetHelpPage (state.helpPage + 1)
+                        [ onClick <| SetHelpPage (helpPage + 1)
                         , width <| px 50
                         ]
                         <| el [centerX] <| arrowHeadRight 45
@@ -1323,27 +1458,21 @@ viewHelp state =
                 [ centerX
                 , alignBottom
                 , paddingEach { top = 25, left = 0, right = 0, bottom = 13 }
-                , onClick ShowHelp
+                , onClick <| ShowHelp False
+                , height <| px <| round <| 85 * modifier
                 ]
                 <| arrowHeadsUp 75
             , horzSeparator
-            ]
-        else
-            column
+            , el
                 [ centerX
-                , centerY
-                , width <| px helpWidth
-                , onClick ShowHelp
+                , alignTop
+                , onClick <| ShowHelp True
+                , padding 13
+                , height <| px <| round <| 60 * (1-modifier)
                 --, explain Debug.todo
                 ]
-                [ horzSeparator
-                , el
-                    [ centerX
-                    , padding 13
-                    --, explain Debug.todo
-                    ]
-                    <| arrowHeadsDown 75
-               ]
+                <| arrowHeadsDown 75
+            ]
 
 
 arrowHeadLeft : Float -> Element Msg
@@ -1475,7 +1604,7 @@ viewHelpButton radius =
         , Background.color lightgray
         , Font.color darkgray
         , Font.size 36
-        , onClick ShowHelp
+        , onClick <| ShowHelp True
         , Border.shadow
             { offset = (3, 3)
             , size = 3
@@ -1908,107 +2037,151 @@ menuButton buttonColor attrs msg =
 
 menuPanel : ExperimentState -> Element Msg
 menuPanel state =
-    if state.menu then
-        el
-            [ width fill
-            , height fill
-            -- , Background.color <| rgba 0 0 0 0.5
-            , onClick MenuClose
-            , inFront
-                <| column
-                    [ Border.rounded 6
-                    , Background.color lightgray
-                    , Font.color background
-                    -- , padding 10
-                    , alignTop
-                    , alignRight
+    let
+        buttonWidth = 30
+        buttonHeight = 48
+
+        menuWidth = 290
+        menuHeight = 350
+        
+        modifier = 
+            Animator.linear state.showMenu <|
+                \b ->
+                    if b then
+                        Animator.at 1
+                    else
+                        Animator.at 0
+
+        w = interpolate buttonWidth menuWidth modifier
+        h = interpolate buttonHeight menuHeight modifier
+        bg = fromRgb <| Color.toRgba <| Animator.color
+                state.showMenu
+                ( \s ->
+                    if s then
+                        Color.rgb grays.lightgray grays.lightgray grays.lightgray
+                    else
+                        Color.rgb grays.background grays.background grays.background
+                )
+                
+                
+
+        onClickMsg = (MenuToggle (not <| Animator.current state.showMenu))
+        showMenu = Animator.current state.showMenu
+    in
+    el
+        [ width fill
+        , height fill
+        , behindContent <|
+            el
+                [ width fill
+                , height fill
+                , onClick BackgroundClick
+                ]
+                none
+        ]
+        <| 
+        column
+            [ Border.rounded 6
+            , Background.color bg
+            , Font.color background
+            , alignTop
+            , alignRight
+            , width <| px <| round w
+            , height <| px <| round h
+            , clip
+            ]
+            ( if showMenu then
+                [ row
+                    [ width fill ]
+                    [ el
+                        [ padding 18
+                        , alignLeft
+                        , centerY
+                        , Font.size 30
+                        , Font.light
+                        ]
+                        <| text "Menu"
+                        , menuButton background [alignRight, alignTop ] onClickMsg
                     ]
-                    [ row
-                        [ width fill ]
-                        [ el
-                            [ padding 18
-                            , alignLeft
-                            , centerY
-                            , Font.size 30
-                            , Font.light
-                            ]
-                            <| text "Menu"
-                            , menuButton background [alignRight, alignTop ] MenuClose
+                , column
+                    [ padding 15
+                    , spacing 15
+                    ]
+                    [ button
+                        [centerX]
+                        { onPress = Just <| SetDebugging (not state.debug)
+                        , label = text
+                            ( if state.debug then
+                                "Hide debugging"
+                            else
+                                "Show debugging"
+                            )
+                        }
+                    , button
+                        [centerX]
+                        { onPress = Nothing
+                        , label = text "Reset"
+                        }
+                    , button
+                        [centerX]
+                        { onPress = Just DownloadResults
+                        , label = text "Save"
+                        }
+                     , button
+                        [centerX]
+                        { onPress = Just NoOp
+                        , label = text "Help"
+                        }
+                    , el
+                        [ paddingXY 0 20
+                        , width fill
                         ]
-                    , column
-                        [ padding 15
-                        , spacing 15
-                        ]
-                        [ button
-                            [centerX]
-                            { onPress = Just <| SetDebugging (not state.debug)
-                            , label = text
-                                ( if state.debug then
-                                    "Hide debugging"
-                                else
-                                    "Show debugging"
-                                )
-                            }
-                        , button
-                            [centerX]
-                            { onPress = Nothing
-                            , label = text "Reset"
-                            }
-                        , button
-                            [centerX]
-                            { onPress = Just DownloadResults
-                            , label = text "Save"
-                            }
-                        , el
-                            [ paddingXY 0 20
+                        <| el
+                            [ Border.width 1
+                            , Border.color gray
                             , width fill
                             ]
-                            <| el
-                                [ Border.width 1
-                                , Border.color gray
-                                , width fill
-                                ]
-                                none
-                        , row
-                            [ width fill
-                            , spacing 20
+                            none
+                    , row
+                        [ width fill
+                        , spacing 20
+                        ]
+                        [ column
+                            [ alignLeft
+                            , Font.light
+                            , spacing 15
                             ]
-                            [ column
-                                [ alignLeft
-                                , Font.light
-                                , spacing 15
-                                ]
-                                [ text "Trials completed:"
-                                , text "Session performance:"
-                                , text "Session type:"
-                                ]
-                            , column
-                                [ alignRight
-                                , Font.medium
-                                , spacing 15
-                                ]
-                                [ text
-                                    <| (fromInt <| (trialIdx state) - 1)
-                                    ++ " of " ++ (fromInt <| nTrials state.sessionType)
-                                , text
-                                    <| ((fromInt << round << (*) 100 << successRate) state.results) ++ "%"
-                                , (case state.sessionType of
-                                    Train -> text "Train"
-                                    Test -> text "Test"
-                                )
-                                ]
+                            [ text "Trials completed:"
+                            , text "Session performance:"
+                            , text "Session type:"
+                            ]
+                        , column
+                            [ alignRight
+                            , Font.medium
+                            , spacing 15
+                            ]
+                            [ text
+                                <| (fromInt <| (trialIdx state) - 1)
+                                ++ " of " ++ (fromInt <| nTrials state.sessionType)
+                            , text
+                                <| ((fromInt << round << (*) 100 << successRate) state.results) ++ "%"
+                            , (case state.sessionType of
+                                Train -> text "Train"
+                                Test -> text "Test"
+                            )
                             ]
                         ]
                     ]
-            ]
-            none
-    else
-        menuButton
-            lightgray
-            [ alignTop
-            , alignRight
-            ]
-            MenuOpen
+                ]
+            else
+                [ menuButton
+                    lightgray
+                    [ alignTop
+                    , alignRight
+                    ]
+                    onClickMsg
+                ]
+            )
 
 
 
@@ -2033,6 +2206,59 @@ renderAudio _ programState =
 
 
 
+-- ANIMATOR
+
+
+experimentAnimator : Animator.Animator ExperimentState
+experimentAnimator =
+    Animator.animator
+        |> Animator.watching
+            .showMenu
+            (\newShowMenu model ->
+                { model | showMenu = newShowMenu }
+            )
+
+
+helpVisibilityAnimator : Animator.Animator SetupState
+helpVisibilityAnimator =
+    Animator.animator
+        |> Animator.watching
+            .showHelp
+            (\newShowHelp model ->
+                { model | showHelp = newShowHelp }
+            )
+
+
+helpPageAnimator : Animator.Animator SetupState
+helpPageAnimator =
+    Animator.animator
+        |> Animator.watching
+            .helpPage
+            (\nextHelpPage model ->
+                { model | helpPage = nextHelpPage }
+            )
+
+
+textAlphaAnimator1 : Animator.Animator SetupState
+textAlphaAnimator1 =
+    Animator.animator
+        |> Animator.watching
+            .textAlpha
+            (\newAlpha ({textAlpha} as model) ->
+                { model | textAlpha = newAlpha }
+            )
+
+textAlphaAnimator2 : Animator.Animator ExperimentState
+textAlphaAnimator2 =
+    Animator.animator
+        |> Animator.watching
+            .textAlpha
+            (\newAlpha ({textAlpha} as model) ->
+                { model | textAlpha = newAlpha }
+            )
+
+
+
 -- UTILS
 
 
@@ -2051,3 +2277,6 @@ getListEntry i list =
                 Nothing
 
 
+interpolate : Float -> Float -> Float -> Float
+interpolate min max frac =
+    min + (max - min) * frac

@@ -8691,7 +8691,7 @@ var $author$project$Main$StartTrial = function (a) {
 var $author$project$Main$Waiting = function (a) {
 	return {$: 1, a: a};
 };
-var $author$project$Main$params = {b0: 8 / 6, bH: 35.0, b1: 0.06, b4: 0.055, bb: 300.0, bM: 1500.0, ce: 0.01, bp: 0.25, dc: 1, ax: 150.0, ck: 0.015, bW: 0.75, dg: 1000, dh: 150};
+var $author$project$Main$params = {b0: 8 / 6, bH: 35.0, b1: 0.06, b4: 0.055, bb: 300.0, bM: 1500.0 / 2, ce: 0.01, bp: 0.25, dc: 1, ax: 150.0, ck: 0.015, bW: 0.75, dg: 1000, dh: 150};
 var $author$project$Main$arrivalTime = function (trial) {
 	return $elm$time$Time$millisToPosix(
 		$elm$core$Basics$round($author$project$Main$params.bb) + $elm$time$Time$posixToMillis(trial.bf));
@@ -18699,7 +18699,7 @@ var $author$project$Main$viewWelcome = function (state) {
 						$mdgriffith$elm_ui$Element$centerY,
 						$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$fill),
 						$mdgriffith$elm_ui$Element$width(
-						$mdgriffith$elm_ui$Element$fillPortion(3)),
+						$mdgriffith$elm_ui$Element$px(1211)),
 						$mdgriffith$elm_ui$Element$padding(75),
 						$mdgriffith$elm_ui$Element$clipY
 					]),

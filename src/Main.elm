@@ -364,7 +364,7 @@ params =
     , trialDelayMax = 1000
     , cueDuration = 35.0
     , targetDuration = 150.0
-    , iti = 1500.0
+    , iti = 1500.0/2
     , flightDuration = 300.0
     , stepT = 1
     , rocketSizeFrac = 0.01
@@ -1263,7 +1263,7 @@ viewWelcome state =
             [ centerX
             , centerY
             , height fill
-            , width <| fillPortion 3
+            , width <| px 1211 --<| fillPortion 3
             , padding 75
             , clipY
             --, explain Debug.todo

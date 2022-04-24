@@ -18825,7 +18825,8 @@ var $author$project$Main$viewWelcome = function (state) {
 											$mdgriffith$elm_animator$Animator$loop,
 											$mdgriffith$elm_animator$Animator$millis(2200),
 											A2($mdgriffith$elm_animator$Animator$wave, 0.3, 1));
-									}))
+									})),
+								$mdgriffith$elm_ui$Element$Events$onClick($author$project$Main$SpacePressed)
 							]),
 						_List_fromArray(
 							[

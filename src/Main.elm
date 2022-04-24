@@ -1339,6 +1339,7 @@ viewWelcome state =
                             (Animator.millis 2200)
                             (Animator.wave 0.3 1)
                         )
+                , onClick SpacePressed
                 ]
                 [ text <|
                     if (not showHelp) && (helpPage + 1) >= (List.length help) then

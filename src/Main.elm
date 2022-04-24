@@ -2053,9 +2053,9 @@ menuPanel state =
         buttonWidth = 30
         buttonHeight = 48
 
-        menuWidth = 300
+        menuWidth = 325
         menuHeight = 350
-        
+
         modifier = 
             Animator.linear state.showMenu <|
                 \b ->
@@ -2118,6 +2118,7 @@ menuPanel state =
                 , column
                     [ padding 15
                     , spacing 15
+                    , centerX
                     ]
                     [ button
                         [centerX]

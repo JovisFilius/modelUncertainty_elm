@@ -17019,7 +17019,7 @@ var $author$project$Main$menuPanel = function (state) {
 		function (b) {
 			return b ? $mdgriffith$elm_animator$Animator$at(1) : $mdgriffith$elm_animator$Animator$at(0);
 		});
-	var menuWidth = 300;
+	var menuWidth = 325;
 	var menuHeight = 350;
 	var buttonWidth = 30;
 	var w = A3($author$project$Main$interpolate, buttonWidth, menuWidth, modifier);
@@ -17100,7 +17100,8 @@ var $author$project$Main$menuPanel = function (state) {
 					_List_fromArray(
 						[
 							$mdgriffith$elm_ui$Element$padding(15),
-							$mdgriffith$elm_ui$Element$spacing(15)
+							$mdgriffith$elm_ui$Element$spacing(15),
+							$mdgriffith$elm_ui$Element$centerX
 						]),
 					_List_fromArray(
 						[

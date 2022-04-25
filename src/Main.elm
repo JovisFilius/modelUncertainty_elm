@@ -414,7 +414,7 @@ params : Params
 params =
     { trialDelayMin = 150
     , trialDelayMax = 1000
-    , cueDuration = 35.0
+    , cueDuration = 50 --35.0
     , targetDuration = 150.0
     , iti = 1500.0/2
     , flightDuration = 300.0
@@ -576,6 +576,7 @@ type Msg
     | MenuToggle Bool
     | BackgroundClick
     | DownloadResults
+    | DownloadDebugTrace
     | Debug String
     | NoOp
     | SoundLoaded (Result Audio.LoadError Audio.Source)
@@ -587,7 +588,7 @@ type Msg
     | RandomProfile Profile
     | RandomProfileAndX Profile Float
     | StartTrial Posix
-    | HideCue
+    | HideCue Posix
     | LaunchRocket Posix
     | StepRocket Posix
     | ShowTarget Posix
@@ -824,15 +825,23 @@ updateExperimentState msg ({currentTrial} as state) =
                 ( { state
                   | currentTrial = startTrial startTime state.currentTrial
                   , cue = True
-                  , debugLog = ("StartTrial [duration="++durationStr++"]")::state.debugLog
+                  , debugLog =
+                        ( "StartTrial [time="
+                        ++(fromInt <| posixToMillis startTime)
+                        ++", duration="++durationStr++"]"
+                        )::state.debugLog
                   }
-                , Task.perform (\_ -> HideCue) (Process.sleep params.cueDuration)
+                , Task.perform
+                    HideCue
+                    ( Process.sleep params.cueDuration
+                        |> andThen (\_ -> now)
+                    )
                 )
 
-        HideCue ->
+        HideCue time ->
             ( { state
               | cue = False
-              , debugLog = "HideCue"::state.debugLog
+              , debugLog = ("HideCue [time="++(fromInt <| posixToMillis time)++"]")::state.debugLog
               }
             , Task.perform
                 ShowTarget
@@ -938,6 +947,15 @@ updateExperimentState msg ({currentTrial} as state) =
             ( { state | showMenu = Animator.go Animator.veryQuickly False state.showMenu }
             , Cmd.none
             )
+
+        DownloadDebugTrace ->
+            ( state
+            , Download.string
+                "modelUncertainty_debugging"
+                "text/plain"
+                (unlines state.debugLog)
+            )
+                
 
         DownloadResults ->
             ( state
@@ -2017,9 +2035,11 @@ graytint : Float -> Color
 graytint f =
     rgb f f f
 
-horzSeparator : Element msg
-horzSeparator =
+grayGradient : Float -> Float -> List (Color)
+grayGradient min max =
     let
+        tints = linSpace min max 20
+
         sep : Color -> Element msg
         sep color =
             el
@@ -2034,31 +2054,31 @@ horzSeparator =
                 ]
                 none
 
-        tints : List Float
-        tints =
-            [ 0.25
-            , 0.275
-            , 0.3
-            , 0.325
-            , 0.35
-            , 0.375
-            , 0.4
-            , 0.425
-            , 0.45
-            , 0.475
-            , 0.5
-            , 0.525
-            , 0.55
-            ]
-
+        leftPart = List.map graytint tints
     in
-        row
-            [ width fill
-            ]
-            ( (List.map (sep << graytint) tints)
-              ++ ((List.reverse << List.map (sep << graytint)) tints)
-            )
+        leftPart ++ (List.reverse leftPart)
 
+horzSeparator_ : Float -> Float -> Element msg
+horzSeparator_ min max =
+    let
+        sep : Color -> Element msg
+        sep color =
+            el
+                [ width <| fillPortion 3
+                , Border.widthEach
+                    { bottom=1
+                    , left=0
+                    , right=0
+                    , top=0
+                    }
+                , Border.color color
+                ]
+                none
+    in
+        row [width fill] <| List.map sep <| grayGradient min max
+
+horzSeparator : Element msg
+horzSeparator = horzSeparator_ 0.25 0.55
 
 vertSeparator : Element msg
 vertSeparator =
@@ -2081,13 +2101,10 @@ vertSeparator =
         tints = [0.25, 0.275, 0.3, 0.325, 0.35, 0.375, 0.4, 0.425, 0.45]
 
     in
-        column
-            [ height fill
-            ]
+        column [height fill]
             ( [ el [height <| fillPortion 5] none
               ]
-              ++ (List.map (sep << graytint) tints)
-              ++ ((List.reverse << List.map (sep << graytint)) tints)
+              ++ (List.map sep <| grayGradient 0.25 0.55)
               ++ [ el [height <| fillPortion 5] none
               ]
             )
@@ -2154,7 +2171,7 @@ menuPanel state =
         buttonHeight = 48
 
         menuWidth = 325
-        menuHeight = 350
+        menuHeight = 420--390
 
         modifier = 
             Animator.linear state.showMenu <|
@@ -2219,6 +2236,7 @@ menuPanel state =
                     [ padding 15
                     , spacing 15
                     , centerX
+                    , height fill
                     ]
                     [ button
                         [centerX]
@@ -2229,6 +2247,11 @@ menuPanel state =
                             else
                                 "Show debugging"
                             )
+                        }
+                    , button
+                        [centerX]
+                        { onPress = Just <| DownloadDebugTrace
+                        , label = text "Save debugging"
                         }
                     , button
                         [centerX]
@@ -2245,19 +2268,23 @@ menuPanel state =
                         { onPress = Just NoOp
                         , label = text "Help"
                         }
-                    , el
-                        [ paddingXY 0 20
-                        , width fill
-                        ]
-                        <| el
-                            [ Border.width 1
-                            , Border.color gray
-                            , width fill
-                            ]
-                            none
+                    , el [height fill] none
+                    , horzSeparator_ 0.65 0.2
+                    , el [height fill] none
+                   -- , el
+                   --     [ paddingXY 0 20
+                   --     , width fill
+                   --     ]
+                   --     <| el
+                   --         [ Border.width 1
+                   --         , Border.color gray
+                   --         , width fill
+                   --         ]
+                   --         none
                     , row
                         [ width fill
                         , spacing 20
+                        , paddingEach { bottom = 6, top = 0, left = 0, right = 0}
                         ]
                         [ column
                             [ alignLeft
@@ -2375,6 +2402,11 @@ textAlphaAnimator2 =
 -- UTILS
 
 
+unlines : List String -> String
+unlines =
+    String.join "\u{000A}"
+
+
 getListEntry : Int -> List a -> Maybe a
 getListEntry i list =
     if i < 0 then
@@ -2388,6 +2420,16 @@ getListEntry i list =
                     getListEntry (i-1) items
             [] ->
                 Nothing
+
+
+linSpace : Float -> Float -> Int -> List Float
+linSpace min max n =
+    let
+        delta = (max - min) / (toFloat (n-1))
+    in
+        List.map
+            ((\idx -> min + delta * idx) << toFloat)
+            <| List.range 0 (n-1)
 
 
 interpolate : Float -> Float -> Float -> Float

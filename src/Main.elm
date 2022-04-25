@@ -444,6 +444,7 @@ type Trial
         , profile : Profile
         , initialDelay : Float
         , startTime : Posix
+        , measuredEndTime : Maybe Posix
         }
     | Launched TrialData
 
@@ -455,6 +456,7 @@ type alias TrialData =
     , startTime : Posix
     , currentTime : Posix
     , launchTime : Posix
+    , measuredEndTime : Maybe Posix
     }
 
 
@@ -837,38 +839,43 @@ updateExperimentState msg ({currentTrial} as state) =
                 (Process.sleep
                     ( (duration state.currentTrial)
                       - params.cueDuration
-                      - params.targetDuration / 2
+--                      - params.targetDuration / 2
                     )
                     |> andThen (\_ -> now)
                 )
             )
 
         ShowTarget targetTime ->
-            case currentTrial of
-                Launched trialData ->
-                    ( { state
-                      | target = True
-                      , beepAt = 
-                            if result trialData then
-                                Just targetTime
-                            else
-                                Nothing
-                      , debugLog = "ShowTarget"::state.debugLog
-                      }
-                    , Task.perform
-                        (\_ -> NextTrial)
-                        (Process.sleep <| params.targetDuration + params.iti)
-                    )
+            let
+                updatedTrial = setTargetVisibleStamp targetTime currentTrial
+            in
+                case currentTrial of
+                    Launched trialData ->
+                        ( { state
+                            | target = True
+                            , currentTrial = updatedTrial
+                            , beepAt = 
+                                if result trialData then
+                                    Just targetTime
+                                else
+                                    Nothing
+                            , debugLog = "ShowTarget"::state.debugLog
+                          }
+                        , Task.perform
+                            (\_ -> NextTrial)
+                            (Process.sleep <| params.targetDuration + params.iti)
+                        )
 
-                Launchable _ ->
-                    ( { state
-                      | target = True
-                      , debugLog = "ShowTarget"::state.debugLog
-                      }
-                    , Cmd.none
-                    )
+                    Launchable _ ->
+                        ( { state
+                            | target = True
+                            , currentTrial = updatedTrial
+                            , debugLog = "ShowTarget"::state.debugLog
+                          }
+                        , Cmd.none
+                        )
 
-                _ -> (state, Cmd.none)
+                    _ -> (state, Cmd.none)
 
         LaunchRocket time ->
             ( { state
@@ -941,7 +948,7 @@ updateExperimentState msg ({currentTrial} as state) =
                         Test -> "test"
                 )
                 "text/csv"
-                (trials2Csv state.results)
+                (trialData2Csv state.results)
             )
 
         AnimationStep aType newTime ->
@@ -962,21 +969,29 @@ updateExperimentState msg ({currentTrial} as state) =
             ( state, Cmd.none )
 
 
-trials2Csv : List TrialData -> String
-trials2Csv list =
-    case list of
-        [] -> ""
-
-        tr::trs ->
-            String.join
-                ","
-                [ fromFloat tr.xFrac
-                , fromFloat <| duration (Launched tr)
-                , fromInt
-                    <| (posixToMillis tr.launchTime)
-                    + (round params.flightDuration)
-                    - (posixToMillis tr.startTime)
-                ]
+trialData2Csv : List TrialData -> String
+trialData2Csv  =
+    let
+        trial2Csv trial =
+            let
+                startMillis = posixToMillis trial.startTime
+            in
+                String.join ","
+                    [ fromFloat trial.xFrac
+                    , fromFloat <| duration (Launched trial)
+                    , fromInt
+                        <| (posixToMillis trial.launchTime)
+                        + (round params.flightDuration)
+                        - startMillis
+                    , Maybe.withDefault
+                        "nothing"
+                        ( Maybe.map
+                            (fromInt << (\eT -> eT - startMillis) << posixToMillis)
+                            trial.measuredEndTime
+                        )
+                    ]
+    in
+        String.join "\u{000A}" << List.map trial2Csv 
 
 
 newTrial : Profile -> Float -> Trial
@@ -997,6 +1012,7 @@ startTrial time trial =
                     , profile = oldData.profile
                     , initialDelay = oldData.initialDelay
                     , startTime = time
+                    , measuredEndTime = Nothing
                     }
             in
                 Launchable newData
@@ -1017,6 +1033,38 @@ launchTrial time trial =
                     , startTime = oldData.startTime
                     , currentTime = time
                     , launchTime = time
+                    , measuredEndTime = oldData.measuredEndTime
+                    }
+            in
+                Launched newData
+
+        _ -> trial
+
+setTargetVisibleStamp : Posix -> Trial -> Trial
+setTargetVisibleStamp time trial =
+    case trial of
+        Launchable oldData ->
+            let
+                newData = 
+                    { xFrac = oldData.xFrac
+                    , profile = oldData.profile
+                    , initialDelay = oldData.initialDelay
+                    , startTime = oldData.startTime
+                    , measuredEndTime = Just time
+                    }
+            in
+                Launchable newData
+
+        Launched oldData ->
+            let
+                newData = 
+                    { xFrac = oldData.xFrac
+                    , profile = oldData.profile
+                    , initialDelay = oldData.initialDelay
+                    , startTime = oldData.startTime
+                    , currentTime = oldData.currentTime
+                    , launchTime = oldData.launchTime
+                    , measuredEndTime = Just time
                     }
             in
                 Launched newData

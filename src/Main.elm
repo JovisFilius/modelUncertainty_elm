@@ -70,6 +70,12 @@ import Task
         , andThen
         )
 
+import TextElements as TE
+    exposing
+        ( TextList(..)
+        , ListItem(..)
+        )
+
 import Time
     exposing
         ( Posix
@@ -218,18 +224,64 @@ todo =
 -- HELP
 
 
-help : List String
-help =
-    [ """Welcome!
-    This is an experiment in the form of a game. It is designed to investigate the human ability to learn and predict intervals of time. The experiment consists of independent but similar trials.
+nHelpPages : Int
+nHelpPages = List.length <| help 0
+
+help : Float -> List (List (Element Msg), Element Msg)
+help fontSize =
+    let
+        p = List.map (\str -> paragraph [] [ text str ]) << String.lines
+    in
+    [ ( p """Welcome!
+    This is an experiment in the form of a game. It is designed to investigate the human ability to learn and predict intervals of time.
     """
-    , "The goal of the game is simple: launch a rocket from the bottom of the screen, to hit a target at the top. However, the target only appears after a specific interval on each trial. Therefore, it is important to launch the rocket at the right time!"
-    , "The rocket stops moving as soon as the target appears. When this happens, the trial is over and points are awarded based on the proximity to the target. It is your task to score as many points as possible before the game is over."
-    , """Each trial follows the same procedure: You initiate it by pressing, either the 'z' or the '/' button. Then, after a short random interval, a cue at the bottom of the screen indicates the start of the trial. From this moment on, it is up to you to to launch the rocket at the right time by pressing the Space bar.
-    """ 
-    , """The game comes in two versions, a 'Train' and a 'Test' one. Make sure to select the right type before you start.
+-- The experiment consists of independent but similar trials.
+    , none
+    )
+    , ( p """The goal is simple: You launch a rocket from the bottom of the screen, to hit a target at the top.
+However, the target only appears after an unknown interval and, when it is invisible, it cannot be hit. Therefore, it is important to launch the rocket at the right time!
+    """
+    , none
+    )
+    , ( p "Each trial follows the same procedure:"
+        ++
+        ( TE.ol
+            [ Font.size <| round <| 26 / 32 * fontSize
+            ]
+            [ Item "You initiate it, by pressing either 'z' or '/'."
+            , Item "After a short while, a rectangular cue, at the bottom of the screen, indicates the start of the trial."
+            , SubList "From then on:"
+                <| Ol
+                [ Item "You can launch the rocket, by pressing the Space bar."
+                , Item "The target will appear at the top of the screen at some point."
+                ]
+            , Item "Repeat!"
+            ]
+        )
+        , none
+    )
+    , ( p """Initially, you will not know when exactly to launch the rocket. Don't worry, this is part of the game!
+        As you progress through the trials, you will acquire the skill of well-timed rocket launching.
+    """
+    , none
+    )
+    , ( p """Each trial ends as soon as the target appears.
+        When this happens,"""
+        ++ ( TE.ul
+            [ Font.size <| round <| 26/32 * fontSize
+            ]
+            [ Item "The rocket stops moving."
+            , Item "Points are awarded if it's close to the target."
+            , Item "Otherwise, a hint shows whether the rocket was launched too late or too early."
+            ]
+        ) ++ p "It is your task to score as many points as possible before the game is over."
+    , none
+    )
+    , ( p """The game comes in two versions, a 'Train' and a 'Test' one. Make sure to select the right type before you start.
     Good luck!
     """
+    , none
+    )
     ]
 
 
@@ -588,7 +640,7 @@ updateSetupState msg state =
             )
 
         SetHelpPage i ->
-            if i >= 0 && i < (List.length help) then
+            if i >= 0 && i < nHelpPages then
                 ( { state
                     | helpPage = Animator.go Animator.quickly i state.helpPage
                     , debugLog = ("SetHelpPage ["++fromInt i++"]") :: state.debugLog
@@ -620,7 +672,7 @@ updateSetupState msg state =
                 helpPage = Animator.current state.helpPage
                 showHelp = Animator.current state.showHelp
             in
-            if (helpPage + 1) >= (List.length help) then
+            if (helpPage + 1) >= nHelpPages then
                 if (not showHelp) then
                     ( state
                     , Task.perform (\_ -> NextTrial) Time.now
@@ -633,7 +685,7 @@ updateSetupState msg state =
                 ( state
                 , Task.perform (\_ -> ShowHelp True) Time.now
                 )
-            else if (helpPage + 1) < List.length help then
+            else if (helpPage + 1) < nHelpPages then
                 ( state
                 , Task.perform (\_ -> SetHelpPage <| helpPage + 1) Time.now
                 )
@@ -1342,7 +1394,7 @@ viewWelcome state =
                 , onClick SpacePressed
                 ]
                 [ text <|
-                    if (not showHelp) && (helpPage + 1) >= (List.length help) then
+                    if (not showHelp) && (helpPage + 1) >= nHelpPages then
                         "press Space to start"
                     else
                         "press Space"
@@ -1355,6 +1407,7 @@ viewWelcome state =
 viewHelp : SetupState -> Element Msg
 viewHelp state =
     let 
+
         showHelp = Animator.current state.showHelp
         helpPage = Animator.current state.helpPage
 
@@ -1390,11 +1443,17 @@ viewHelp state =
 
         viewHelpPage : Int -> Element Msg
         viewHelpPage i =
-            if i >= List.length help then
+            if i >= nHelpPages then
                 none
             else
                 let
-                    helpText = getListEntry i help
+                    fontMin = 8
+                    fontMax = 32
+                    fontSize = fontMin + (fontMax - fontMin) * pageModifier
+
+                    (helpText, helpGraphics) =
+                        Maybe.withDefault ([], none) <| getListEntry i (help fontSize)
+
                     pageModifier =
                         Animator.linear state.helpPage <|
                             \pageNum ->
@@ -1404,23 +1463,15 @@ viewHelp state =
                                     Animator.at 0
                 in
                     textColumn
-                        [ spacing <| 2*radius
-                        , paddingXY 0 5
+                        [ paddingXY 0 5
                         , Font.light
                         , Font.color white
-                        , Font.size <| round <| 8 + 24 * pageModifier
+                        , Font.size <| round <| fontMin + (fontMax - fontMin) * pageModifier
+                        , spacing <| round <| fontSize / 2
                         , width <| px <| round <| pageModifier * (textWidth - 130)
                         , alpha pageModifier
                         ]
-                        (case helpText of
-                            Just strs ->
-                                List.map
-                                    (\str -> paragraph [] [ text str ])
-                                    (String.lines strs)
-                            Nothing ->
-                                []
-                        )
-                
+                        helpText
     in
         column
             [ centerX
@@ -1456,8 +1507,8 @@ viewHelp state =
                     , height <| px 550
                     , paddingXY textPadding 0
                     ]
-                    <| List.map viewHelpPage <| List.range 0 (List.length help)
-                , (if helpPage + 1 < (List.length help) then
+                    <| List.map viewHelpPage <| List.range 0 nHelpPages
+                , (if helpPage + 1 < nHelpPages then
                     el
                         [ onClick <| SetHelpPage (helpPage + 1)
                         , width <| px 50

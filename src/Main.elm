@@ -248,7 +248,7 @@ However, the target only appears after an unknown interval and, when it is invis
         ( TE.ol
             [ Font.size <| round <| 26 / 32 * fontSize
             ]
-            [ Item "You initiate it, by pressing either 'z' or '/'."
+            [ Item "You initiate it by pressing the 'z' key."
             , Item "After a short while, a rectangular cue, at the bottom of the screen, indicates the start of the trial."
             , SubList "From then on:"
                 <| Ol
@@ -367,15 +367,15 @@ viewport2HeightChanged v =
         HeightChanged height
 
 
-initExperiment : ProgramState -> Profile -> Float -> ProgramState
-initExperiment programState profile x =
+initExperiment : ProgramState -> Posix -> Profile -> Float -> ProgramState
+initExperiment programState time profile x =
     case programState of
         Initializing state ->
             Running
                 { height = 740
                 , width = 960
                 , results = []
-                , currentTrial = newTrial profile x
+                , currentTrial = newTrial time profile x
                 , debugLog = state.debugLog
                 , cue = False
                 , target = False
@@ -433,17 +433,23 @@ type Trial
     = Idle
         { xFrac : Float
         , profile : Profile
+        , makeTime : Posix
         }
     | Waiting
         { xFrac : Float
         , profile : Profile
+        , makeTime : Posix
         , initialDelay : Float
+        , initTime : Posix
         }
     | Launchable
         { xFrac : Float
         , profile : Profile
+        , makeTime : Posix
         , initialDelay : Float
+        , initTime : Posix
         , startTime : Posix
+        , cueHideTime : Maybe Posix
         , measuredEndTime : Maybe Posix
         }
     | Launched TrialData
@@ -452,8 +458,11 @@ type Trial
 type alias TrialData =
     { xFrac : Float
     , profile : Profile
+    , makeTime : Posix
     , initialDelay : Float
+    , initTime : Posix
     , startTime : Posix
+    , cueHideTime : Maybe Posix
     , currentTime : Posix
     , launchTime : Posix
     , measuredEndTime : Maybe Posix
@@ -583,10 +592,11 @@ type Msg
     | SetSessionType SessionType
     | SpacePressed
     | SlashOrZPressed
-    | NextTrial
-    | RandomDelay Float
-    | RandomProfile Profile
-    | RandomProfileAndX Profile Float
+    | NextTrial Posix
+    | InitTrial Posix
+    | RandomDelay Posix Float
+    | TimeAndRandomProfile Posix Profile
+    | TimeAndRandomProfileAndX Posix Profile Float
     | StartTrial Posix
     | HideCue Posix
     | LaunchRocket Posix
@@ -602,6 +612,11 @@ type AnimationType
     | TextAlpha
 
 
+logMsg : String -> { a | debugLog : List String } -> { a | debugLog : List String }
+logMsg msg state =
+    { state | debugLog = msg :: state.debugLog }
+
+
 update : AudioData -> Msg -> ProgramState -> (ProgramState, Cmd Msg, AudioCmd Msg)
 update _ msg programState =
     case programState of
@@ -610,8 +625,8 @@ update _ msg programState =
 
         Initializing state -> 
             case msg of
-                RandomProfileAndX profile x ->
-                    ( initExperiment programState profile x
+                TimeAndRandomProfileAndX time profile x ->
+                    ( initExperiment programState time profile x
                     , Task.perform viewport2HeightChanged getViewport
                     , Audio.cmdNone
                     )
@@ -654,20 +669,24 @@ updateSetupState msg state =
                 (state, Cmd.none)
 
         SetSessionType sType ->
-            ( { state | sessionType = sType }
+            ( { state
+                | sessionType = sType
+                }
             , Cmd.none
             )
 
-        NextTrial ->
+        NextTrial time ->
             ( state
             , Random.generate
-                RandomProfile
+                (TimeAndRandomProfile time)
                 (getDistModel <| getModelId 1 state.sessionType)
             )
 
-        RandomProfile profile ->
+        TimeAndRandomProfile time profile ->
             ( state
-            , Random.generate (RandomProfileAndX profile) (Random.float 0 1)
+            , Random.generate
+                (TimeAndRandomProfileAndX time profile)
+                (Random.float 0 1)
             )
 
         SpacePressed ->
@@ -678,7 +697,7 @@ updateSetupState msg state =
             if (helpPage + 1) >= nHelpPages then
                 if (not showHelp) then
                     ( state
-                    , Task.perform (\_ -> NextTrial) Time.now
+                    , Task.perform NextTrial Time.now
                     )
                 else
                     ( state
@@ -694,7 +713,7 @@ updateSetupState msg state =
                 )
             else
                 ( state
-                , Task.perform (\_ -> NextTrial) Time.now
+                , Task.perform NextTrial Time.now
                 )
 
         SetDebugging bool ->
@@ -738,7 +757,7 @@ updateExperimentState msg ({currentTrial} as state) =
             , Cmd.none
             )
 
-        NextTrial ->
+        NextTrial time ->
             case currentTrial of
                 Launched trialData ->
                     ( { state
@@ -749,23 +768,25 @@ updateExperimentState msg ({currentTrial} as state) =
                             ("MakeTrial [trialIdx="++(fromInt <| trialIdx state)++"]")::state.debugLog
                       }
                     , Random.generate
-                        RandomProfile
+                        (TimeAndRandomProfile time)
                         (getDistModel <| getModelId (trialIdx state) state.sessionType)
                     )
 
                 _ -> (state, Cmd.none)
 
-        RandomProfile profile ->
+        TimeAndRandomProfile time profile ->
             ( { state
               | debugLog = 
                     ("RandomProfile ["++profile2Str profile++"]")::state.debugLog
               }
-            , Random.generate (RandomProfileAndX profile) (Random.float 0 1)
+            , Random.generate
+                (TimeAndRandomProfileAndX time profile)
+                (Random.float 0 1)
             )
 
-        RandomProfileAndX profile x ->
+        TimeAndRandomProfileAndX time profile x ->
             ( { state
-              | currentTrial = newTrial profile x
+              | currentTrial = newTrial time profile x
               , debugLog = ("sampleX [x="++fromFloat x++"]")::state.debugLog
               }
             , Cmd.none
@@ -793,20 +814,31 @@ updateExperimentState msg ({currentTrial} as state) =
                 Idle _ ->
                     ( { state | debugLog = "SlashOrZPressed"::state.debugLog
                       }
-                    , Random.generate RandomDelay (Random.float 150.0 1000.0)
+                    , Task.perform InitTrial Time.now
                     )
 
                 _ -> (state, Cmd.none)
 
+        InitTrial time ->
+            case currentTrial of
+                Idle _ ->
+                        ( state
+                        , Random.generate (RandomDelay time) (Random.float 150.0 1000.0)
+                        )
 
-        RandomDelay delay ->
+                _ -> (state,Cmd.none)
+
+
+        RandomDelay time delay ->
             case currentTrial of
                 Idle oldData ->
                     let
                         newData =
                             { xFrac = oldData.xFrac
                             , profile = oldData.profile
+                            , makeTime = oldData.makeTime
                             , initialDelay = delay
+                            , initTime = time
                             }
                     in
                         ( { state
@@ -839,20 +871,43 @@ updateExperimentState msg ({currentTrial} as state) =
                 )
 
         HideCue time ->
-            ( { state
-              | cue = False
-              , debugLog = ("HideCue [time="++(fromInt <| posixToMillis time)++"]")::state.debugLog
-              }
-            , Task.perform
-                ShowTarget
-                (Process.sleep
-                    ( (duration state.currentTrial)
-                      - params.cueDuration
---                      - params.targetDuration / 2
-                    )
-                    |> andThen (\_ -> now)
-                )
-            )
+            let
+                cmd = Task.perform
+                        ShowTarget
+                        (Process.sleep
+                            ( (duration state.currentTrial)
+                              - params.cueDuration
+        --                      - params.targetDuration / 2
+                            )
+                            |> andThen (\_ -> now)
+                        )
+            in
+                case currentTrial of
+                    Launchable oldData ->
+                        let
+                            newData = { oldData | cueHideTime = Just time }
+                        in
+                            ( { state
+                                | cue = False
+                                , currentTrial = Launchable newData
+                                , debugLog = ("HideCue [time="++(fromInt <| posixToMillis time)++"]")::state.debugLog
+                              }
+                            , cmd
+                            )
+
+                    Launched oldData ->
+                        let
+                            newData = { oldData | cueHideTime = Just time }
+                        in
+                            ( { state
+                                | cue = False
+                                , currentTrial = Launched newData
+                                , debugLog = ("HideCue [time="++(fromInt <| posixToMillis time)++"]")::state.debugLog
+                              }
+                            , cmd
+                            )
+
+                    _ -> (state, Cmd.none)
 
         ShowTarget targetTime ->
             let
@@ -871,8 +926,10 @@ updateExperimentState msg ({currentTrial} as state) =
                             , debugLog = "ShowTarget"::state.debugLog
                           }
                         , Task.perform
-                            (\_ -> NextTrial)
-                            (Process.sleep <| params.targetDuration + params.iti)
+                            NextTrial
+                            ( Process.sleep (params.targetDuration + params.iti)
+                            |> andThen (\_ -> now)
+                            )
                         )
 
                     Launchable _ ->
@@ -893,8 +950,10 @@ updateExperimentState msg ({currentTrial} as state) =
               }
             , if state.target then --target is already visible -> start new trial
                 Task.perform
-                    (\_ -> NextTrial)
-                    (Process.sleep <| params.targetDuration + params.iti)
+                    NextTrial
+                    (Process.sleep (params.targetDuration + params.iti)
+                    |> andThen (\_ -> now)
+                    )
             else
                  Cmd.none
             )
@@ -905,8 +964,8 @@ updateExperimentState msg ({currentTrial} as state) =
                     let
                         newData =
                             if (posixToMillis newTime)
-                            > (posixToMillis <| endTime trialData) then
-                                { trialData | currentTime = endTime trialData }
+                            > (posixToMillis <| computeEndTime trialData) then
+                                { trialData | currentTime = computeEndTime trialData }
                             else
                                 { trialData | currentTime = newTime }
                     in
@@ -1001,10 +1060,20 @@ trialData2Csv  =
                         <| (posixToMillis trial.launchTime)
                         + (round params.flightDuration)
                         - startMillis
+                    , fromInt <| posixToMillis trial.makeTime
+                    , fromInt <| posixToMillis trial.initTime
+                    , fromInt <| posixToMillis trial.startTime
                     , Maybe.withDefault
-                        "nothing"
+                        "NaN"
                         ( Maybe.map
-                            (fromInt << (\eT -> eT - startMillis) << posixToMillis)
+                            (fromInt << posixToMillis) trial.cueHideTime
+                        )
+                    , fromInt <| posixToMillis trial.launchTime
+                    , Maybe.withDefault
+                        "NaN"
+                        ( Maybe.map
+                            (fromInt << posixToMillis)
+                            --(fromInt << (\eT -> eT - startMillis) << posixToMillis)
                             trial.measuredEndTime
                         )
                     ]
@@ -1012,11 +1081,12 @@ trialData2Csv  =
         String.join "\u{000A}" << List.map trial2Csv 
 
 
-newTrial : Profile -> Float -> Trial
-newTrial profile x =
+newTrial : Posix -> Profile -> Float -> Trial
+newTrial mkTime profile x =
     Idle
         { xFrac = x
         , profile = profile
+        , makeTime = mkTime
         }
 
 
@@ -1028,9 +1098,12 @@ startTrial time trial =
                 newData = 
                     { xFrac = oldData.xFrac
                     , profile = oldData.profile
+                    , makeTime = oldData.makeTime
+                    , initTime = oldData.initTime
                     , initialDelay = oldData.initialDelay
                     , startTime = time
                     , measuredEndTime = Nothing
+                    , cueHideTime = Nothing
                     }
             in
                 Launchable newData
@@ -1047,11 +1120,14 @@ launchTrial time trial =
                 newData =
                     { xFrac = oldData.xFrac
                     , profile = oldData.profile
+                    , makeTime = oldData.makeTime
+                    , initTime = oldData.initTime
                     , initialDelay = oldData.initialDelay
                     , startTime = oldData.startTime
                     , currentTime = time
                     , launchTime = time
                     , measuredEndTime = oldData.measuredEndTime
+                    , cueHideTime = oldData.cueHideTime
                     }
             in
                 Launched newData
@@ -1066,9 +1142,12 @@ setTargetVisibleStamp time trial =
                 newData = 
                     { xFrac = oldData.xFrac
                     , profile = oldData.profile
+                    , makeTime = oldData.makeTime
+                    , initTime = oldData.initTime
                     , initialDelay = oldData.initialDelay
                     , startTime = oldData.startTime
                     , measuredEndTime = Just time
+                    , cueHideTime = oldData.cueHideTime
                     }
             in
                 Launchable newData
@@ -1078,11 +1157,14 @@ setTargetVisibleStamp time trial =
                 newData = 
                     { xFrac = oldData.xFrac
                     , profile = oldData.profile
+                    , makeTime = oldData.makeTime
+                    , initTime = oldData.initTime
                     , initialDelay = oldData.initialDelay
                     , startTime = oldData.startTime
                     , currentTime = oldData.currentTime
                     , launchTime = oldData.launchTime
                     , measuredEndTime = Just time
+                    , cueHideTime = oldData.cueHideTime
                     }
             in
                 Launched newData
@@ -1092,7 +1174,7 @@ setTargetVisibleStamp time trial =
 
 error : TrialData -> Int
 error trialData =
-    (posixToMillis <| endTime trialData) - (posixToMillis <| arrivalTime trialData)
+    (posixToMillis <| computeEndTime trialData) - (posixToMillis <| arrivalTime trialData)
 
 
 result : TrialData -> Bool
@@ -1158,15 +1240,15 @@ duration trial =
         Quadratic -> -4960 * xFrac^2 + 4960 * xFrac + 560
 
 
-endTime : TrialData -> Posix
-endTime trialData =
+computeEndTime : TrialData -> Posix
+computeEndTime trialData =
     millisToPosix
         <| (round <| duration (Launched trialData)) + (posixToMillis trialData.startTime)
 
 
 hasEnded : TrialData -> Bool
 hasEnded trialData =
-    (posixToMillis trialData.currentTime) >= (posixToMillis <| endTime trialData)
+    (posixToMillis trialData.currentTime) >= (posixToMillis <| computeEndTime trialData)
 
 
 -- SUBSCRIPTIONS
@@ -1590,6 +1672,7 @@ viewHelp state =
                 , paddingEach { top = 25, left = 0, right = 0, bottom = 13 }
                 , onClick <| ShowHelp False
                 , height <| px <| round <| 85 * modifier
+                , alpha modifier
                 ]
                 <| arrowHeadsUp 75
             , horzSeparator
@@ -1599,6 +1682,7 @@ viewHelp state =
                 , onClick <| ShowHelp True
                 , padding 13
                 , height <| px <| round <| 60 * (1-modifier)
+                , alpha (1 - modifier)
                 --, explain Debug.todo
                 ]
                 <| arrowHeadsDown 75

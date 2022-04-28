@@ -315,6 +315,7 @@ type ProgramState
 type alias SetupState =
     { debug : Bool
     , debugLog : List String
+    , height : Float
     , sessionType : SessionType
     , showHelp : Animator.Timeline Bool
     , helpPage : Animator.Timeline Int
@@ -347,12 +348,13 @@ init _ =
         { debug = False
         , debugLog = []
         , sessionType = Train
+        , height = 1080
         , showHelp = Animator.init False
         , helpPage = Animator.init 0
         , beep = Nothing
         , textAlpha = Animator.init ()
         }
-    , Cmd.none
+    , Task.perform viewport2HeightChanged getViewport
     , Audio.loadAudio
         SoundLoaded
             "beep.wav"
@@ -1464,11 +1466,12 @@ viewWelcome state =
             , centerY
             , height fill
             , width <| px 1211 --<| fillPortion 3
-            , padding 75
+            --, padding 75
             , clipY
             --, explain Debug.todo
             ]
-            [ heightFillerW 3
+            [ el [height (fill |> maximum 75)] none
+            , heightFillerW 3
             , el
                 [ centerX
                 , Font.light
@@ -1530,8 +1533,11 @@ viewWelcome state =
                 [ height <| fillPortion 3
                 , clipY
                 , centerX
-                , spacing 20
-                , height <| px <| 28 + (round <| 160 * modifier)
+                , height
+                    ( fillPortion 3
+                        |> maximum (28 + (round <| 160 * modifier * state.height / 1080))
+                        |> minimum (2*20)
+                    )
                 , alpha <|
                     Animator.move
                         state.textAlpha
@@ -1548,6 +1554,7 @@ viewWelcome state =
                         "press Space"
                     
                 ]
+                , el [height (fillPortion 3 |> maximum 75)] none
             ]
         , el [width fill] none
         ]
@@ -1563,6 +1570,7 @@ viewHelp state =
         textWidth = 750
         textPadding = 30
         helpWidth = textWidth + 2*textPadding
+        pageHeightMax = 550
 
         bold = (el [Font.medium])
         textbf = bold << text
@@ -1636,7 +1644,10 @@ viewHelp state =
             ]
             [ row
                 [ centerY
-                , height <| px <| round <| modifier * 550
+                , height
+                    ( fill
+                        |> maximum (round <| modifier * pageHeightMax)
+                    )
                 , alpha lateModifier
                 ]
                 [ (if helpPage > 0 then
@@ -1652,7 +1663,8 @@ viewHelp state =
                     [ width fill
                     , centerX
                     , clip
-                    , height <| px 550
+                    , centerY
+                    --, height <| px <| round <| modifier * pageHeightMax
                     , paddingXY textPadding 0
                     ]
                     <| List.map viewHelpPage <| List.range 0 nHelpPages
@@ -1669,23 +1681,28 @@ viewHelp state =
             , el
                 [ centerX
                 , alignBottom
-                , paddingEach { top = 25, left = 0, right = 0, bottom = 13 }
+                , paddingEach
+                    { top = round <| 25 * modifier
+                    , left = 0
+                    , right = 0
+                    , bottom = round <| 13 * modifier
+                    }
                 , onClick <| ShowHelp False
                 , height <| px <| round <| 85 * modifier
                 , alpha modifier
                 ]
-                <| arrowHeadsUp 75
+                <| arrowHeadsUp <| 75 * modifier
             , horzSeparator
             , el
                 [ centerX
                 , alignTop
                 , onClick <| ShowHelp True
-                , padding 13
+                , padding <| round <| 13 * (1-modifier)
                 , height <| px <| round <| 60 * (1-modifier)
                 , alpha (1 - modifier)
                 --, explain Debug.todo
                 ]
-                <| arrowHeadsDown 75
+                <| arrowHeadsDown <| 75 * (1 - modifier)
             ]
 
 

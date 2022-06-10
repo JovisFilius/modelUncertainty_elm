@@ -110,6 +110,12 @@ todo =
         , Done "Show trialIdx in side menu"
         , Do Low "reset experiment when reset button is clicked"
         ]
+    , Do Low "Convert debugging flow into a monadic construction (instead of making separate debug calls)"
+    , P "documentation"
+        [ Do Medium "annotate utility functions"
+        , Do High "annotate main program flow functions"
+        , Do Medium "annotate Msg types"
+        ]
     , P "Data logistics"
         [ Done "Download a string to a file"
         , P "Convert trials to csv"
@@ -378,7 +384,7 @@ initExperiment programState time profile x =
                 , width = 960
                 , results = []
                 , currentTrial = newTrial time profile x
-                , debugLog = state.debugLog
+                , debugLog = "initiating experiment state"::state.debugLog
                 , cue = False
                 , target = False
                 , debug = state.debug
@@ -487,14 +493,16 @@ statusToString trial =
 
 type SessionType
     = Train
-    | Test
+    | TestQ
+    | TestL
 
 
 nTrials : SessionType -> Int
 nTrials s =
     case s of
         Train -> 360
-        Test -> 650
+        TestQ -> 650
+        TestL -> 650
 
 
 sessionComplete : ExperimentState -> Bool
@@ -555,7 +563,7 @@ getModelId iTr sType =
             else --if iTr <= 360 then
                 Q
 
-        Test ->
+        TestQ ->
             if iTr <= 50 then
                 Q
             else if iTr <= 150 then
@@ -571,8 +579,21 @@ getModelId iTr sType =
             else --if iTr <= 650 then
                 LC3
 
-
---type alias DistModel = List (Profile, Int)
+        TestL ->
+            if iTr <= 50 then
+                L
+            else if iTr <= 150 then
+                LC3
+            else if iTr <= 250 then
+                LC2
+            else if iTr <= 350 then
+                LC1
+            else if iTr <= 450 then
+                QC3
+            else if iTr <= 550 then
+                QC2
+            else --if iTr <= 650 then
+                QC1
 
 
 
@@ -624,6 +645,7 @@ update _ msg programState =
     case programState of
         Running state ->
             (\(newState, cmd) -> (Running newState, cmd, Audio.cmdNone)) <| updateExperimentState msg state
+            --(\(newState, cmd) -> (Running newState, cmd, Audio.cmdNone)) <| testRunUpdate msg state
 
         Initializing state -> 
             case msg of
@@ -649,7 +671,6 @@ update _ msg programState =
 
                 _ ->
                     (\(newState, cmd) -> (Initializing newState, cmd, Audio.cmdNone)) <| updateSetupState msg state
-
 
 updateSetupState : Msg -> SetupState -> (SetupState, Cmd Msg)
 updateSetupState msg state =
@@ -678,7 +699,9 @@ updateSetupState msg state =
             )
 
         NextTrial time ->
-            ( state
+            ( { state
+              | debugLog = "Proceeding with first trial"::state.debugLog
+              }
             , Random.generate
                 (TimeAndRandomProfile time)
                 (getDistModel <| getModelId 1 state.sessionType)
@@ -751,6 +774,151 @@ updateSetupState msg state =
             (state, Cmd.none)
 
 
+testRunUpdate : Msg -> ExperimentState -> (ExperimentState, Cmd Msg)
+testRunUpdate msg ({currentTrial} as state) =
+    case msg of
+--        SlashOrZPressed ->
+--            case currentTrial of
+--                Idle _ ->
+--                    ( { state | debugLog = "SlashOrZPressed"::state.debugLog
+--                      }
+--                    , Task.perform InitTrial Time.now
+--                    )
+--
+--                _ -> (state, Cmd.none)
+
+        SpacePressed ->
+            if sessionComplete state then
+                ( state
+                , Task.perform (\_ -> DownloadResults) Time.now
+                )
+            else
+                case currentTrial of
+--                    Launchable _ ->
+--                        ( { state
+--                          | debugLog = "SpacePressed"::state.debugLog
+--                          }
+--                        , Task.perform LaunchRocket Time.now
+--                        )
+
+                    Idle oldData ->
+                        let 
+                            newData =
+                                { xFrac = oldData.xFrac
+                                , profile = oldData.profile
+                                , makeTime = oldData.makeTime
+                                , initialDelay = 0
+                                , initTime = oldData.makeTime
+                                , startTime = oldData.makeTime
+                                , cueHideTime = Just oldData.makeTime
+                                , currentTime = oldData.makeTime
+                                , launchTime = oldData.makeTime
+                                , measuredEndTime = Just oldData.makeTime
+                                }
+                        in
+                            ( { state
+                              | currentTrial = Launched newData
+                              , debugLog = "Artificially completing trial"::state.debugLog
+                              }
+                            , Task.perform NextTrial Time.now
+                            )
+
+                    _ -> (state, Cmd.none)
+
+
+        NextTrial time ->
+--            let
+--                trial_ =
+--                    Waiting
+--                        { xFrac = x
+--                        , profile = profile
+--                        , makeTime = time
+--                        , initialDelay = 0
+--                        , initTime = time
+--                        }
+--                    |> startTrial time
+--                    |> launchTrial time
+--            in
+
+            case currentTrial of
+                Launched trialData ->
+                    ( { state
+                      | target = False
+                      , results = state.results ++ [trialData]
+                      , totalScore = state.totalScore + (score << error) trialData
+                      , debugLog =
+                            ("MakeTrial [trialIdx="++(fromInt <| trialIdx state)++"]")::state.debugLog
+                      }
+                    , if sessionComplete state
+                    then Cmd.none
+                    else
+                      Random.generate
+                        (TimeAndRandomProfile time)
+                        (getDistModel <| getModelId ((trialIdx state) + 1) state.sessionType)
+                    )
+
+                _ -> ({state|debugLog = "ignoring 'NextTrial'"::state.debugLog}, Cmd.none)
+
+        TimeAndRandomProfile time profile ->
+            ( { state
+              | debugLog = 
+                    ("RandomProfile ["++profile2Str profile++"]")::state.debugLog
+              }
+            , Random.generate
+                (TimeAndRandomProfileAndX time profile)
+                (Random.float 0 1)
+            )
+
+        TimeAndRandomProfileAndX time profile x ->
+            let 
+                newData =
+                    { xFrac = x
+                    , profile = profile
+                    , makeTime = time
+                    , initialDelay = 0
+                    , initTime = time
+                    , startTime = time
+                    , cueHideTime = Just time
+                    , currentTime = time
+                    , launchTime = time
+                    , measuredEndTime = Just time
+                    }
+            in
+                ( { state
+                  | currentTrial = Launched newData
+                  , debugLog = ("sampleX [x="++fromFloat x++"]")
+                            ::"Artificially completing trial"
+                            ::state.debugLog
+                  }
+                , Task.perform NextTrial (Process.sleep 0.1 |> andThen (\_ -> Time.now))
+                )
+
+        DownloadDebugTrace ->
+            ( state
+            , Download.string
+                "modelUncertainty_debugging"
+                "text/plain"
+                (unlines state.debugLog)
+            )
+                
+
+        DownloadResults ->
+            ( state
+            , Download.string
+                ("modelUncertainty_session="
+                ++ case state.sessionType of
+                        Train -> "train"
+                        TestQ -> "testQ"
+                        TestL -> "testL"
+                )
+                "text/csv"
+                (trialData2Csv state.results)
+            )
+
+        _ ->
+            ( state, Cmd.none )
+        
+
 updateExperimentState : Msg -> ExperimentState -> (ExperimentState, Cmd Msg)
 updateExperimentState msg ({currentTrial} as state) =
     case msg of
@@ -771,7 +939,7 @@ updateExperimentState msg ({currentTrial} as state) =
                       }
                     , Random.generate
                         (TimeAndRandomProfile time)
-                        (getDistModel <| getModelId (trialIdx state) state.sessionType)
+                        (getDistModel <| getModelId ((trialIdx state) + 1) state.sessionType)
                     )
 
                 _ -> (state, Cmd.none)
@@ -1024,7 +1192,8 @@ updateExperimentState msg ({currentTrial} as state) =
                 ("modelUncertainty_session="
                 ++ case state.sessionType of
                         Train -> "train"
-                        Test -> "test"
+                        TestQ -> "testQ"
+                        TestL -> "testL"
                 )
                 "text/csv"
                 (trialData2Csv state.results)
@@ -1269,6 +1438,7 @@ subscriptions _ programState =
                     [ Animator.toSubscription (AnimationStep ToggleMenu) state experimentAnimator
                     , Animator.toSubscription (AnimationStep TextAlpha) state textAlphaAnimator2
                     ]
+                        
                 Initializing state ->
                     [ Animator.toSubscription (AnimationStep ToggleHelp) state helpVisibilityAnimator
                     , Animator.toSubscription (AnimationStep ChangeHelpPage) state helpPageAnimator
@@ -1502,7 +1672,10 @@ viewWelcome state =
                         ( [ onClick (SetSessionType Train)
                           ]
                           ++ case state.sessionType of
-                                Test ->
+                                TestQ ->
+                                    [ Font.light
+                                    ]
+                                TestL ->
                                     [ Font.light
                                     ]
                                 Train ->
@@ -1516,17 +1689,40 @@ viewWelcome state =
                         ]
                         none
                     , el
-                        ( [ onClick (SetSessionType Test)
+                        ( [ onClick (SetSessionType TestQ)
                           ]
                           ++ case state.sessionType of
-                                Test ->
+                                TestQ ->
+                                    [ Font.heavy
+                                    ]
+                                TestL ->
+                                    [ Font.light
+                                    ]   
+                                Train ->
+                                    [ Font.light
+                                    ]
+                        )
+                        <| text "TestQ"
+                    , el
+                        [ height <| px 70
+                        , Border.widthEach {top = 0, left = 1, right = 0, bottom = 0}
+                        ]
+                        none
+                    , el
+                        ( [ onClick (SetSessionType TestL)
+                          ]
+                          ++ case state.sessionType of
+                                TestQ ->
+                                    [ Font.light
+                                    ]
+                                TestL ->
                                     [ Font.heavy
                                     ]
                                 Train ->
                                     [ Font.light
                                     ]
                         )
-                        <| text "Test"
+                        <| text "TestL"
                     ]
                 ]
             , row
@@ -2408,7 +2604,8 @@ menuPanel state =
                                 <| ((fromInt << round << (*) 100 << successRate) state.results) ++ "%"
                             , (case state.sessionType of
                                 Train -> text "Train"
-                                Test -> text "Test"
+                                TestQ -> text "TestQ"
+                                TestL -> text "TestL"
                             )
                             ]
                         ]

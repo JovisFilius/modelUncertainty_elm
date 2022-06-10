@@ -59,7 +59,11 @@ import Random
 
 import Rocket
 
-import String exposing (fromInt, fromFloat)
+import String as S
+    exposing
+        ( fromInt
+        , fromFloat
+        )
 
 import Svg exposing (Svg, svg)
 import Svg.Attributes as SA
@@ -314,7 +318,12 @@ port audioPortFromJS : (Decode.Value -> msg) -> Sub msg
 
 
 type ProgramState
-    = Initializing SetupState
+    = Fetching
+        { maybeHeight : Maybe Float
+        , maybeSeq : Maybe TrainSeq
+        , debugLog : List String
+        }
+    | Initializing SetupState
     | Running ExperimentState
 
 
@@ -347,20 +356,30 @@ type alias ExperimentState =
         , textAlpha : Animator.Timeline ()
         }
 
-
-init : flags -> (ProgramState, Cmd Msg, AudioCmd Msg)
-init _ =
-    ( Initializing
+initState : Float -> TrainSeq -> List String -> ProgramState
+initState h seq log =
+    Initializing
         { debug = False
-        , debugLog = []
-        , sessionType = Train
-        , height = 1080
+        , debugLog = log
+        , sessionType = Train seq
+        , height = h
         , showHelp = Animator.init False
         , helpPage = Animator.init 0
         , beep = Nothing
         , textAlpha = Animator.init ()
         }
-    , Task.perform viewport2HeightChanged getViewport
+
+init : flags -> (ProgramState, Cmd Msg, AudioCmd Msg)
+init _ =
+    ( Fetching
+        { maybeHeight = Nothing
+        , maybeSeq = Nothing
+        , debugLog = []
+        }
+    , Cmd.batch
+        [ Task.perform viewport2HeightChanged getViewport
+        , sampleTrainSession
+        ]
     , Audio.loadAudio
         SoundLoaded
             "beep.wav"
@@ -492,17 +511,54 @@ statusToString trial =
         
 
 type SessionType
-    = Train
-    | TestQ
-    | TestL
+    = Train TrainSeq
+    | Test TestSeq
+
+type alias TrainSeq = (ModelID, ModelID, ModelID)
+type alias TestSeq = (ModelID, (ModelID, ModelID, ModelID), (ModelID, ModelID, ModelID))
+
+
+trainSeq : Int -> TrainSeq
+trainSeq n = 
+    case n of
+        1 -> (C,L,Q)
+        2 -> (C,Q,L)
+        3 -> (L,C,Q)
+        4 -> (L,Q,C)
+        5 -> (Q,L,C)
+        6 -> (Q,C,L)
+        _ -> (Q,C,L)
+
+testQSeq : TestSeq
+testQSeq =
+    (Q
+    , (QC1, QC2, QC3)
+    , (LC1, LC2, LC3)
+    )
+
+testLSeq : TestSeq
+testLSeq = 
+    (L
+    , (LC3, LC2, LC1)
+    , (QC3, QC2, QC1)
+    )
+
+
+sessionType2Str : SessionType -> String
+sessionType2Str sess =
+    case sess of
+        Train (m1,m2,m3) ->
+            "train" ++ String.concat (List.map modelId2Str [m1,m2,m3])
+
+        Test (m0,(m1,m2,m3),(m4,m5,m6)) ->
+            "test" ++ String.concat (List.map modelId2Str [m0,m1,m2,m3,m4,m5,m6])
 
 
 nTrials : SessionType -> Int
 nTrials s =
     case s of
-        Train -> 360
-        TestQ -> 650
-        TestL -> 650
+        Train _ -> 360
+        Test _ -> 650
 
 
 sessionComplete : ExperimentState -> Bool
@@ -520,6 +576,20 @@ type ModelID
     | LC1
     | LC2
     | LC3
+
+modelId2Str : ModelID -> String
+modelId2Str id =
+    case id of
+        C -> "C"
+        L -> "L"
+        Q -> "Q"
+        QC1 -> "QC1"
+        QC2 -> "QC2"
+        QC3 -> "QC3"
+        LC1 -> "LC1"
+        LC2 -> "LC2"
+        LC3 -> "LC3"
+
 
 
 getDistModel : ModelID -> DistModel
@@ -555,47 +625,29 @@ type alias DistModel = Random.Generator Profile
 getModelId : Int -> SessionType -> ModelID
 getModelId iTr sType =
     case sType of
-        Train ->
+        Train (t1,t2,t3) ->
             if iTr <= 120 then
-                C
+                t1
             else if iTr <= 240 then
-                L
+                t2
             else --if iTr <= 360 then
-                Q
-
-        TestQ ->
+                t3
+        Test (t1,(t2,t3,t4),(t5,t6,t7)) ->
             if iTr <= 50 then
-                Q
+                t1
             else if iTr <= 150 then
-                QC1
+                t2
             else if iTr <= 250 then
-                QC2
+                t3
             else if iTr <= 350 then
-                QC3
+                t4
             else if iTr <= 450 then
-                LC1
+                t5
             else if iTr <= 550 then
-                LC2
+                t6
             else --if iTr <= 650 then
-                LC3
-
-        TestL ->
-            if iTr <= 50 then
-                L
-            else if iTr <= 150 then
-                LC3
-            else if iTr <= 250 then
-                LC2
-            else if iTr <= 350 then
-                LC1
-            else if iTr <= 450 then
-                QC3
-            else if iTr <= 550 then
-                QC2
-            else --if iTr <= 650 then
-                QC1
-
-
+                t7
+            
 
 -- UPDATE
 
@@ -612,7 +664,9 @@ type Msg
     | Debug String
     | NoOp
     | SoundLoaded (Result Audio.LoadError Audio.Source)
-    | SetSessionType SessionType
+    | SetTestSession TestSeq
+    | SampleTrainSession
+    | SetTrainSession TrainSeq
     | SpacePressed
     | SlashOrZPressed
     | NextTrial Posix
@@ -643,6 +697,42 @@ logMsg msg state =
 update : AudioData -> Msg -> ProgramState -> (ProgramState, Cmd Msg, AudioCmd Msg)
 update _ msg programState =
     case programState of
+        Fetching state ->
+            case (msg, state.maybeHeight, state.maybeSeq) of
+                (HeightChanged h, _, Nothing) ->
+                    ( Fetching
+                        { state
+                        | maybeHeight = Just (toFloat h)
+                        , debugLog = "setting height" :: state.debugLog
+                        }
+                    , Cmd.none
+                    , Audio.cmdNone
+                    )
+
+                (HeightChanged h, _, Just seq) ->
+                    ( initState (toFloat h) seq state.debugLog
+                    , Cmd.none
+                    , Audio.cmdNone
+                    )
+
+                (SetTrainSession seq, Nothing, _) ->
+                    ( Fetching
+                        { state
+                        | maybeSeq = Just seq
+                        , debugLog = "setting training sequence" :: state.debugLog
+                        }
+                    , Cmd.none
+                    , Audio.cmdNone
+                    )
+
+                (SetTrainSession seq, Just h, _) ->
+                    ( initState h seq state.debugLog
+                    , Cmd.none
+                    , Audio.cmdNone
+                    )
+
+                (_,_,_) -> (programState, Cmd.none, Audio.cmdNone)
+
         Running state ->
             (\(newState, cmd) -> (Running newState, cmd, Audio.cmdNone)) <| updateExperimentState msg state
             --(\(newState, cmd) -> (Running newState, cmd, Audio.cmdNone)) <| testRunUpdate msg state
@@ -691,9 +781,21 @@ updateSetupState msg state =
             else
                 (state, Cmd.none)
 
-        SetSessionType sType ->
+        SetTestSession seq ->
             ( { state
-                | sessionType = sType
+                | sessionType = Test seq
+                }
+            , Cmd.none
+            )
+
+        SampleTrainSession ->
+            ( state
+            , sampleTrainSession
+            )
+
+        SetTrainSession seq ->
+            ( { state
+                | sessionType = Train seq
                 }
             , Cmd.none
             )
@@ -773,6 +875,8 @@ updateSetupState msg state =
         _ ->
             (state, Cmd.none)
 
+
+sampleTrainSession = Random.generate (SetTrainSession) (Random.map trainSeq (Random.int 1 6))
 
 testRunUpdate : Msg -> ExperimentState -> (ExperimentState, Cmd Msg)
 testRunUpdate msg ({currentTrial} as state) =
@@ -904,15 +1008,7 @@ testRunUpdate msg ({currentTrial} as state) =
 
         DownloadResults ->
             ( state
-            , Download.string
-                ("modelUncertainty_session="
-                ++ case state.sessionType of
-                        Train -> "train"
-                        TestQ -> "testQ"
-                        TestL -> "testL"
-                )
-                "text/csv"
-                (trialData2Csv state.results)
+            , downloadResults state
             )
 
         _ ->
@@ -1188,15 +1284,7 @@ updateExperimentState msg ({currentTrial} as state) =
 
         DownloadResults ->
             ( state
-            , Download.string
-                ("modelUncertainty_session="
-                ++ case state.sessionType of
-                        Train -> "train"
-                        TestQ -> "testQ"
-                        TestL -> "testL"
-                )
-                "text/csv"
-                (trialData2Csv state.results)
+            , downloadResults state
             )
 
         AnimationStep aType newTime ->
@@ -1215,6 +1303,16 @@ updateExperimentState msg ({currentTrial} as state) =
 
         _ ->
             ( state, Cmd.none )
+
+
+downloadResults : ExperimentState -> Cmd msg
+downloadResults state =
+    Download.string
+        ("modelUncertainty_session="
+        ++ sessionType2Str state.sessionType
+        )
+        "text/csv"
+        (trialData2Csv state.results)
 
 
 trialData2Csv : List TrialData -> String
@@ -1444,6 +1542,8 @@ subscriptions _ programState =
                     , Animator.toSubscription (AnimationStep ChangeHelpPage) state helpPageAnimator
                     , Animator.toSubscription (AnimationStep TextAlpha) state textAlphaAnimator1
                     ]
+                
+                Fetching _ -> [Sub.none]
             )
 
 rocketAnimationSub : ProgramState -> Sub Msg
@@ -1501,11 +1601,7 @@ view _ programState =
         , Background.color background
         , clip
         , inFront 
-            <| viewDebugLog
-                ( case programState of
-                    Initializing state -> (state.debug, state.debugLog)
-                    Running state -> (state.debug, state.debugLog)
-                )
+            <| viewDebugLog programState
         ]
         ( case programState of
             Initializing state ->
@@ -1522,6 +1618,8 @@ view _ programState =
                     else
                         viewSessionEnd state
                     )
+
+            Fetching _ -> Element.none
             )
 
 viewExperiment : ExperimentState -> List (Element Msg)
@@ -1583,20 +1681,28 @@ viewSessionEnd state =
         ]
     ]
 
-viewDebugLog : (Bool, List String) -> Element Msg
-viewDebugLog (doDebug, log) =
-    if doDebug then
-        column
-            [ scrollbarY
-            , scrollbarX
-            , alignLeft
-            , centerY
-            , height <| px 900
-            , width <| px 300
-            , padding 10
-            ] <| viewDebugEntries log
-    else
-        none
+viewDebugLog : ProgramState -> Element Msg
+viewDebugLog programState =
+    let
+        (doDebug, log) = 
+            ( case programState of
+                Initializing state -> (state.debug, state.debugLog)
+                Running state -> (state.debug, state.debugLog)
+                Fetching state -> (True, state.debugLog)
+            )
+    in
+        if doDebug then
+            column
+                [ scrollbarY
+                , scrollbarX
+                , alignLeft
+                , centerY
+                , height <| px 900
+                , width <| px 300
+                , padding 10
+                ] <| viewDebugEntries log
+        else
+            none
 
 viewDebugEntries : List String -> List (Element Msg)
 viewDebugEntries log =
@@ -1669,16 +1775,13 @@ viewWelcome state =
                     , padding 20
                     ]
                     [  el 
-                        ( [ onClick (SetSessionType Train)
+                        ( [ onClick SampleTrainSession
                           ]
                           ++ case state.sessionType of
-                                TestQ ->
+                                Test _ ->
                                     [ Font.light
                                     ]
-                                TestL ->
-                                    [ Font.light
-                                    ]
-                                Train ->
+                                Train _ ->
                                     [ Font.heavy
                                     ]
                         )
@@ -1689,16 +1792,18 @@ viewWelcome state =
                         ]
                         none
                     , el
-                        ( [ onClick (SetSessionType TestQ)
+                        ( [ onClick (SetTestSession testQSeq)
                           ]
                           ++ case state.sessionType of
-                                TestQ ->
-                                    [ Font.heavy
-                                    ]
-                                TestL ->
-                                    [ Font.light
-                                    ]   
-                                Train ->
+                                Test seq ->
+                                    if fst seq == Q
+                                    then
+                                        [ Font.heavy
+                                        ]
+                                    else
+                                        [ Font.light
+                                        ]   
+                                Train _ ->
                                     [ Font.light
                                     ]
                         )
@@ -1709,16 +1814,18 @@ viewWelcome state =
                         ]
                         none
                     , el
-                        ( [ onClick (SetSessionType TestL)
+                        ( [ onClick (SetTestSession testLSeq)
                           ]
                           ++ case state.sessionType of
-                                TestQ ->
-                                    [ Font.light
-                                    ]
-                                TestL ->
-                                    [ Font.heavy
-                                    ]
-                                Train ->
+                                Test seq ->
+                                    if fst seq == L
+                                    then
+                                        [ Font.heavy
+                                        ]
+                                    else
+                                        [ Font.light
+                                        ]
+                                Train _ ->
                                     [ Font.light
                                     ]
                         )
@@ -2603,9 +2710,8 @@ menuPanel state =
                             , text
                                 <| ((fromInt << round << (*) 100 << successRate) state.results) ++ "%"
                             , (case state.sessionType of
-                                Train -> text "Train"
-                                TestQ -> text "TestQ"
-                                TestL -> text "TestL"
+                                Train _ -> text "Train"
+                                Test _ -> text "Test"
                             )
                             ]
                         ]
@@ -2733,3 +2839,13 @@ linSpace min max n =
 interpolate : Float -> Float -> Float -> Float
 interpolate min max frac =
     min + (max - min) * frac
+
+
+fst : (a,b,c) -> a
+fst (a,b,c) = a
+
+snd : (a,b,c) -> b
+snd (a,b,c) = b
+
+thd : (a,b,c) -> c
+thd (a,b,c) = c

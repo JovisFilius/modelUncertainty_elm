@@ -162,7 +162,7 @@ todo =
                 ]
             , Done "Don't respond to multiple space presses simultaneously"
             , P "Sample random Profile for each trial"
-                [ P "When updating with the MakeTrial message -> Sample random profile and send it to 'newTrial"
+                [ P "When updating with the MakeTrial message -> Sample random profile and send it to 'mkTrial"
                     [ Done "Check if its possible to chain the commands for sampling a profile and samping the x coordinate together"
                     , Canceled "Use Cmd.batch to sample both the x coord and the profile"
                     , Done "Chain the sampling of the profile and the x coord after each other"
@@ -324,37 +324,47 @@ type ProgramState
         , debugLog : List String
         }
     | Initializing SetupState
-    | Running ExperimentState
+    | Registering SetupState (Maybe Char, Maybe Char, Maybe Char)
+    | BuildState
+        ExperimentData
+        (Maybe Posix)
+        (Maybe Profile)
+        (Maybe Float)
+    | Running RunState
 
 
 type alias SetupState =
-    { debug : Bool
+    { beep : Maybe Audio.Source
+    , debug : Bool
     , debugLog : List String
     , height : Float
-    , sessionType : SessionType
-    , showHelp : Animator.Timeline Bool
     , helpPage : Animator.Timeline Int
-    , beep : Maybe Audio.Source
+    , sessionType : SessionType
+    , helpShown : Animator.Timeline Bool
     , textAlpha : Animator.Timeline ()
     }
 
+type alias RunState = (ExperimentData, Trial)
 
-type alias ExperimentState =
-        { sessionType : SessionType
-        , height : Float
-        , width : Float 
-        , results : List TrialData
-        , currentTrial : Trial
-        , debugLog : List String
-        , cue : Bool
-        , target : Bool
-        , debug : Bool
-        , showMenu : Animator.Timeline Bool
-        , totalScore : Int
-        , beep : Maybe Audio.Source
-        , beepAt : Maybe Posix
-        , textAlpha : Animator.Timeline ()
-        }
+type alias ExperimentData =
+    { beep : Maybe Audio.Source
+    , beepAt : Maybe Posix
+    , debug : Bool
+    , debugLog : List String
+    , cue : Bool
+    , height : Float
+    , participantId : String
+    , results : List TrialData
+    , sessionType : SessionType
+    , showMenu : Animator.Timeline Bool
+    , target : Bool
+    , textAlpha : Animator.Timeline ()
+    , totalScore : Int
+    , width : Float 
+    }
+
+buildState : ExperimentData -> Maybe Posix -> ProgramState
+buildState state time = BuildState state time Nothing Nothing
 
 initState : Float -> TrainSeq -> List String -> ProgramState
 initState h seq log =
@@ -363,7 +373,7 @@ initState h seq log =
         , debugLog = log
         , sessionType = Train seq
         , height = h
-        , showHelp = Animator.init False
+        , helpShown = Animator.init False
         , helpPage = Animator.init 0
         , beep = Nothing
         , textAlpha = Animator.init ()
@@ -393,30 +403,33 @@ viewport2HeightChanged v =
     in
         HeightChanged height
 
+initExperiment : SetupState -> String -> ExperimentData
+initExperiment state id =
+    { height = 740
+    , width = 960
+    , results = []
+    --, currentTrial = mkTrial time profile x
+    , debugLog = "initiating experiment state"::state.debugLog
+    , cue = False
+    , target = False
+    , debug = state.debug
+    , showMenu = Animator.init False
+    , sessionType = state.sessionType
+    , totalScore = 0
+    , beep = state.beep
+    , beepAt = Nothing
+    , textAlpha = state.textAlpha
+    , participantId = id
+    }
 
-initExperiment : ProgramState -> Posix -> Profile -> Float -> ProgramState
-initExperiment programState time profile x =
-    case programState of
-        Initializing state ->
-            Running
-                { height = 740
-                , width = 960
-                , results = []
-                , currentTrial = newTrial time profile x
-                , debugLog = "initiating experiment state"::state.debugLog
-                , cue = False
-                , target = False
-                , debug = state.debug
-                , showMenu = Animator.init False
-                , sessionType = state.sessionType
-                , totalScore = 0
-                , beep = state.beep
-                , beepAt = Nothing
-                , textAlpha = state.textAlpha
-                }
+--nextTrial : ExperimentData -> Posix -> Profile -> Float -> ExperimentData
+nextTrial : ProgramState -> ProgramState
+nextTrial progState =
+    case progState of
+        BuildState state (Just mkTime) (Just profile) (Just x) ->
+                Running (state, (mkTrial mkTime profile x))
 
-        _ -> programState
-
+        _ -> progState
 
 type alias Params =
     { trialDelayMin : Int
@@ -496,7 +509,7 @@ type alias TrialData =
     }
 
 
-trialIdx : ExperimentState -> Int
+trialIdx : ExperimentData -> Int
 trialIdx state =
     state.results |> List.length |> (+) 1
 
@@ -561,7 +574,7 @@ nTrials s =
         Test _ -> 650
 
 
-sessionComplete : ExperimentState -> Bool
+sessionComplete : ExperimentData -> Bool
 sessionComplete state =
     trialIdx state > nTrials state.sessionType
 
@@ -655,7 +668,11 @@ getModelId iTr sType =
 type Msg
     = ShowHelp Bool
     | SetHelpPage Int
-    | SetDebugging Bool
+    --| SetDebugging Bool
+    | ToggleDebugging
+    | Register
+    | InputChar Char
+    | BackSpace
     | HeightChanged Int
     | MenuToggle Bool
     | BackgroundClick
@@ -670,10 +687,11 @@ type Msg
     | SpacePressed
     | SlashOrZPressed
     | NextTrial Posix
+    | TimeStamp Posix
+    | RandomProfile Profile
+    | RandomX Float
     | InitTrial Posix
     | RandomDelay Posix Float
-    | TimeAndRandomProfile Posix Profile
-    | TimeAndRandomProfileAndX Posix Profile Float
     | StartTrial Posix
     | HideCue Posix
     | LaunchRocket Posix
@@ -696,6 +714,9 @@ logMsg msg state =
 
 update : AudioData -> Msg -> ProgramState -> (ProgramState, Cmd Msg, AudioCmd Msg)
 update _ msg programState =
+    let
+        noCmd newState = (newState, Cmd.none, Audio.cmdNone)
+    in
     case programState of
         Fetching state ->
             case (msg, state.maybeHeight, state.maybeSeq) of
@@ -733,17 +754,109 @@ update _ msg programState =
 
                 (_,_,_) -> (programState, Cmd.none, Audio.cmdNone)
 
-        Running state ->
-            (\(newState, cmd) -> (Running newState, cmd, Audio.cmdNone)) <| updateExperimentState msg state
+        Registering state maybeChars ->
+            case msg of
+                InputChar char ->
+                    let
+                        insertChar  : Char -> (Maybe Char, Maybe Char, Maybe Char) ->
+                                        (Maybe Char, Maybe Char, Maybe Char)
+                        insertChar newC cs =
+                            case cs of
+                                (Nothing,b,c) -> (Just newC, b, c)
+                                (a,Nothing,c) -> (a, Just newC, c)
+                                (a,b,Nothing) -> (a, b, Just newC)
+                                _ -> cs
+                    in
+                        noCmd <| Registering state (insertChar char maybeChars)
+
+                BackSpace ->
+                    let
+                        delChar : (Maybe Char, Maybe Char, Maybe Char) ->
+                                        (Maybe Char, Maybe Char, Maybe Char)
+                        delChar cs =
+                            case cs of
+                                (a,b,Just c) -> (a,b,Nothing)
+                                (a,Just b,c) -> (a,Nothing,c)
+                                (Just a,b,c) -> (Nothing,b,c)
+                                _ -> cs
+                    in
+                        noCmd <| Registering state (delChar maybeChars)
+
+                SpacePressed ->
+                    case maybeChars of
+                        (Just a, Just b, Just c) ->
+                            let
+                                id = String.concat <| List.map String.fromChar [a,b,c]
+                            in
+                            noCmd <|
+                                buildState (initExperiment state id) Nothing
+
+                        (_,_,_) -> noCmd programState
+
+                ToggleDebugging ->
+                    noCmd <| Registering { state | debug = not state.debug } maybeChars
+
+                _ -> noCmd programState
+
+        BuildState state time_ profile_ x_ ->
+            case (msg, (time_, profile_, x_)) of
+                (TimeStamp t, (Nothing, _, _)) ->
+                    noCmd <| BuildState state (Just t) profile_ x_
+
+                (RandomProfile p, (_, Nothing, _)) ->
+                    noCmd <| BuildState state time_ (Just p) x_
+
+                (RandomX x, (_, _, Nothing)) ->
+                    noCmd <| BuildState state time_ profile_ (Just x)
+
+                _ -> noCmd programState
+
+        Running ((state,currentTrial) as runState) ->
+            case msg of
+                NextTrial time ->
+                    case currentTrial of
+                        Launched trialData ->
+                            ( buildState
+                                (logMsg
+                                    ("MakeTrial [trialIdx="++(fromInt <| trialIdx state)++"]")
+                                    { state
+                                    | target = False
+                                    , results = state.results ++ [trialData]
+                                    , totalScore = state.totalScore + (score << error) trialData
+                                    }
+                                )
+                                (Just time)
+                            , Cmd.batch 
+                                [ Random.generate
+                                    RandomProfile
+                                    (getDistModel
+                                        <| getModelId ((trialIdx state) + 1) state.sessionType
+                                    )
+                                , Random.generate (RandomX) (Random.float 0 1)
+                                ]
+                            , Audio.cmdNone
+                            )
+
+
+                        _ -> noCmd programState
+
+                _ ->
+                    (\(newState, cmd) ->
+                        (Running newState, cmd, Audio.cmdNone)
+                    ) <| updateRunningState msg runState
             --(\(newState, cmd) -> (Running newState, cmd, Audio.cmdNone)) <| testRunUpdate msg state
 
         Initializing state -> 
             case msg of
-                TimeAndRandomProfileAndX time profile x ->
-                    ( initExperiment programState time profile x
-                    , Task.perform viewport2HeightChanged getViewport
-                    , Audio.cmdNone
-                    )
+                Register ->
+                    noCmd <| Registering state (Nothing, Nothing, Nothing)
+
+--                TimeAndRandomProfileAndX time profile x ->
+--                    ( Maybe.withDefault programState <|
+--                        initExperiment state time profile x
+--                    , Task.perform viewport2HeightChanged getViewport
+--                    , Audio.cmdNone
+--                    )
 
                 SoundLoaded soundData ->
                     case soundData of
@@ -760,13 +873,14 @@ update _ msg programState =
                             )
 
                 _ ->
-                    (\(newState, cmd) -> (Initializing newState, cmd, Audio.cmdNone)) <| updateSetupState msg state
+                    (\(newState, cmd) ->
+                        (Initializing newState, cmd, Audio.cmdNone)) <| updateSetupState msg state
 
 updateSetupState : Msg -> SetupState -> (SetupState, Cmd Msg)
 updateSetupState msg state =
     case msg of
         ShowHelp bool ->
-            ( { state | showHelp = Animator.go Animator.quickly bool state.showHelp }
+            ( { state | helpShown = Animator.go Animator.quickly bool state.helpShown }
             , Cmd.none
             )
 
@@ -800,51 +914,51 @@ updateSetupState msg state =
             , Cmd.none
             )
 
-        NextTrial time ->
-            ( { state
-              | debugLog = "Proceeding with first trial"::state.debugLog
-              }
-            , Random.generate
-                (TimeAndRandomProfile time)
-                (getDistModel <| getModelId 1 state.sessionType)
-            )
+--        NextTrial time ->
+--            ( { state
+--              | debugLog = "Proceeding with first trial"::state.debugLog
+--              }
+--            , Random.generate
+--                (TimeAndRandomProfile time)
+--                (getDistModel <| getModelId 1 state.sessionType)
+--            )
 
-        TimeAndRandomProfile time profile ->
-            ( state
-            , Random.generate
-                (TimeAndRandomProfileAndX time profile)
-                (Random.float 0 1)
-            )
+--        TimeAndRandomProfile time profile ->
+--            ( state
+--            , Random.generate
+--                (TimeAndRandomProfileAndX time profile)
+--                (Random.float 0 1)
+--            )
 
         SpacePressed ->
             let
                 helpPage = Animator.current state.helpPage
-                showHelp = Animator.current state.showHelp
-            in
-            if (helpPage + 1) >= nHelpPages then
-                if (not showHelp) then
-                    ( state
-                    , Task.perform NextTrial Time.now
-                    )
-                else
-                    ( state
-                    , Task.perform (\_ -> ShowHelp False) Time.now
-                    )
-            else if not showHelp then
-                ( state
-                , Task.perform (\_ -> ShowHelp True) Time.now
-                )
-            else if (helpPage + 1) < nHelpPages then
-                ( state
-                , Task.perform (\_ -> SetHelpPage <| helpPage + 1) Time.now
-                )
-            else
-                ( state
-                , Task.perform NextTrial Time.now
-                )
+                helpShown = Animator.current state.helpShown
 
-        SetDebugging bool ->
-            ( { state | debug = bool }
+                maybeNext : Maybe Int
+                maybeNext =
+                    if (helpPage + 1) >= nHelpPages
+                    then Nothing
+                    else Just (helpPage + 1)
+            in
+                case (helpShown, maybeNext) of
+                    (False, Nothing) ->
+                        ( state
+                        , Task.perform (\_ -> Register) Time.now
+                        )
+
+                    (True, Just n) ->
+                        ( state
+                        , Task.perform (\_ -> SetHelpPage <| helpPage + 1) Time.now
+                        )
+
+                    _ ->
+                        ( state
+                        , Task.perform (\_ -> ShowHelp (not helpShown)) Time.now
+                        )
+
+        ToggleDebugging ->
+            ( { state | debug = not state.debug }
             , Cmd.none
             )
 
@@ -878,221 +992,180 @@ updateSetupState msg state =
 
 sampleTrainSession = Random.generate (SetTrainSession) (Random.map trainSeq (Random.int 1 6))
 
-testRunUpdate : Msg -> ExperimentState -> (ExperimentState, Cmd Msg)
-testRunUpdate msg ({currentTrial} as state) =
-    case msg of
---        SlashOrZPressed ->
+--testRunUpdate : Msg -> ExperimentData -> (ExperimentData, Cmd Msg)
+--testRunUpdate msg ({currentTrial} as state) =
+--    case msg of
+--        SpacePressed ->
+--            if sessionComplete state then
+--                ( state
+--                , Task.perform (\_ -> DownloadResults) Time.now
+--                )
+--            else
+--                case currentTrial of
+--                    Idle oldData ->
+--                        let 
+--                            newData =
+--                                { xFrac = oldData.xFrac
+--                                , profile = oldData.profile
+--                                , makeTime = oldData.makeTime
+--                                , initialDelay = 0
+--                                , initTime = oldData.makeTime
+--                                , startTime = oldData.makeTime
+--                                , cueHideTime = Just oldData.makeTime
+--                                , currentTime = oldData.makeTime
+--                                , launchTime = oldData.makeTime
+--                                , measuredEndTime = Just oldData.makeTime
+--                                }
+--                        in
+--                            ( { state
+--                              | currentTrial = Launched newData
+--                              , debugLog = "Artificially completing trial"::state.debugLog
+--                              }
+--                            , Task.perform NextTrial Time.now
+--                            )
+--
+--                    _ -> (state, Cmd.none)
+--
+--
+--        NextTrial time ->
 --            case currentTrial of
---                Idle _ ->
---                    ( { state | debugLog = "SlashOrZPressed"::state.debugLog
+--                Launched trialData ->
+--                    ( { state
+--                      | target = False
+--                      , results = state.results ++ [trialData]
+--                      , totalScore = state.totalScore + (score << error) trialData
+--                      , debugLog =
+--                            ("MakeTrial [trialIdx="++(fromInt <| trialIdx state)++"]")::state.debugLog
 --                      }
---                    , Task.perform InitTrial Time.now
+--                    , if sessionComplete state
+--                    then Cmd.none
+--                    else
+--                      Random.generate
+--                        (TimeAndRandomProfile time)
+--                        (getDistModel <| getModelId ((trialIdx state) + 1) state.sessionType)
 --                    )
 --
---                _ -> (state, Cmd.none)
-
-        SpacePressed ->
-            if sessionComplete state then
-                ( state
-                , Task.perform (\_ -> DownloadResults) Time.now
-                )
-            else
-                case currentTrial of
---                    Launchable _ ->
---                        ( { state
---                          | debugLog = "SpacePressed"::state.debugLog
---                          }
---                        , Task.perform LaunchRocket Time.now
---                        )
-
-                    Idle oldData ->
-                        let 
-                            newData =
-                                { xFrac = oldData.xFrac
-                                , profile = oldData.profile
-                                , makeTime = oldData.makeTime
-                                , initialDelay = 0
-                                , initTime = oldData.makeTime
-                                , startTime = oldData.makeTime
-                                , cueHideTime = Just oldData.makeTime
-                                , currentTime = oldData.makeTime
-                                , launchTime = oldData.makeTime
-                                , measuredEndTime = Just oldData.makeTime
-                                }
-                        in
-                            ( { state
-                              | currentTrial = Launched newData
-                              , debugLog = "Artificially completing trial"::state.debugLog
-                              }
-                            , Task.perform NextTrial Time.now
-                            )
-
-                    _ -> (state, Cmd.none)
-
-
-        NextTrial time ->
---            let
---                trial_ =
---                    Waiting
---                        { xFrac = x
---                        , profile = profile
---                        , makeTime = time
---                        , initialDelay = 0
---                        , initTime = time
---                        }
---                    |> startTrial time
---                    |> launchTrial time
+--                _ -> ({state|debugLog = "ignoring 'NextTrial'"::state.debugLog}, Cmd.none)
+--
+--        TimeAndRandomProfile time profile ->
+--            ( { state
+--              | debugLog = 
+--                    ("RandomProfile ["++profile2Str profile++"]")::state.debugLog
+--              }
+--            , Random.generate
+--                (TimeAndRandomProfileAndX time profile)
+--                (Random.float 0 1)
+--            )
+--
+--        TimeAndRandomProfileAndX time profile x ->
+--            let 
+--                newData =
+--                    { xFrac = x
+--                    , profile = profile
+--                    , makeTime = time
+--                    , initialDelay = 0
+--                    , initTime = time
+--                    , startTime = time
+--                    , cueHideTime = Just time
+--                    , currentTime = time
+--                    , launchTime = time
+--                    , measuredEndTime = Just time
+--                    }
 --            in
-
-            case currentTrial of
-                Launched trialData ->
-                    ( { state
-                      | target = False
-                      , results = state.results ++ [trialData]
-                      , totalScore = state.totalScore + (score << error) trialData
-                      , debugLog =
-                            ("MakeTrial [trialIdx="++(fromInt <| trialIdx state)++"]")::state.debugLog
-                      }
-                    , if sessionComplete state
-                    then Cmd.none
-                    else
-                      Random.generate
-                        (TimeAndRandomProfile time)
-                        (getDistModel <| getModelId ((trialIdx state) + 1) state.sessionType)
-                    )
-
-                _ -> ({state|debugLog = "ignoring 'NextTrial'"::state.debugLog}, Cmd.none)
-
-        TimeAndRandomProfile time profile ->
-            ( { state
-              | debugLog = 
-                    ("RandomProfile ["++profile2Str profile++"]")::state.debugLog
-              }
-            , Random.generate
-                (TimeAndRandomProfileAndX time profile)
-                (Random.float 0 1)
-            )
-
-        TimeAndRandomProfileAndX time profile x ->
-            let 
-                newData =
-                    { xFrac = x
-                    , profile = profile
-                    , makeTime = time
-                    , initialDelay = 0
-                    , initTime = time
-                    , startTime = time
-                    , cueHideTime = Just time
-                    , currentTime = time
-                    , launchTime = time
-                    , measuredEndTime = Just time
-                    }
-            in
-                ( { state
-                  | currentTrial = Launched newData
-                  , debugLog = ("sampleX [x="++fromFloat x++"]")
-                            ::"Artificially completing trial"
-                            ::state.debugLog
-                  }
-                , Task.perform NextTrial (Process.sleep 0.1 |> andThen (\_ -> Time.now))
-                )
-
-        DownloadDebugTrace ->
-            ( state
-            , Download.string
-                "modelUncertainty_debugging"
-                "text/plain"
-                (unlines state.debugLog)
-            )
-                
-
-        DownloadResults ->
-            ( state
-            , downloadResults state
-            )
-
-        _ ->
-            ( state, Cmd.none )
+--                ( { state
+--                  | currentTrial = Launched newData
+--                  , debugLog = ("sampleX [x="++fromFloat x++"]")
+--                            ::"Artificially completing trial"
+--                            ::state.debugLog
+--                  }
+--                , Task.perform NextTrial (Process.sleep 0.1 |> andThen (\_ -> Time.now))
+--                )
+--
+--        DownloadDebugTrace ->
+--            ( state
+--            , Download.string
+--                "modelUncertainty_debugging"
+--                "text/plain"
+--                (unlines state.debugLog)
+--            )
+--                
+--
+--        DownloadResults ->
+--            ( state
+--            , downloadResults state
+--            )
+--
+--        _ ->
+--            ( state, Cmd.none )
         
 
-updateExperimentState : Msg -> ExperimentState -> (ExperimentState, Cmd Msg)
-updateExperimentState msg ({currentTrial} as state) =
+updateRunningState : Msg -> RunState -> (RunState, Cmd Msg)
+updateRunningState msg ((state,currentTrial) as runState) =
+    let
+        updateState : ExperimentData -> RunState
+        updateState newState = (newState,currentTrial)
+
+        update_ : ExperimentData -> Trial -> RunState
+        update_ newState newTrial = (newState, newTrial)
+
+        noOp = (runState, Cmd.none)
+    in
     case msg of
         Debug str ->
-            ( { state | debugLog = state.debugLog ++ [str] }
+            ( updateState <| logMsg str state
             , Cmd.none
             )
 
-        NextTrial time ->
-            case currentTrial of
-                Launched trialData ->
-                    ( { state
-                      | target = False
-                      , results = state.results ++ [trialData]
-                      , totalScore = state.totalScore + (score << error) trialData
-                      , debugLog =
-                            ("MakeTrial [trialIdx="++(fromInt <| trialIdx state)++"]")::state.debugLog
-                      }
-                    , Random.generate
-                        (TimeAndRandomProfile time)
-                        (getDistModel <| getModelId ((trialIdx state) + 1) state.sessionType)
-                    )
 
-                _ -> (state, Cmd.none)
+--        TimeAndRandomProfile time profile ->
+--            ( { state
+--              | debugLog = 
+--                    ("RandomProfile ["++profile2Str profile++"]")::state.debugLog
+--              }
+--            , Random.generate
+--                (TimeAndRandomProfileAndX time profile)
+--                (Random.float 0 1)
+--            )
 
-        TimeAndRandomProfile time profile ->
-            ( { state
-              | debugLog = 
-                    ("RandomProfile ["++profile2Str profile++"]")::state.debugLog
-              }
-            , Random.generate
-                (TimeAndRandomProfileAndX time profile)
-                (Random.float 0 1)
-            )
-
-        TimeAndRandomProfileAndX time profile x ->
-            ( { state
-              | currentTrial = newTrial time profile x
-              , debugLog = ("sampleX [x="++fromFloat x++"]")::state.debugLog
-              }
-            , Cmd.none
-            )
+--        TimeAndRandomProfileAndX time profile x ->
+--            ( { state
+--              | currentTrial = mkTrial time profile x
+--              , debugLog = ("sampleX [x="++fromFloat x++"]")::state.debugLog
+--              }
+--            , Cmd.none
+--            )
 
         SpacePressed ->
             if sessionComplete state then
-                ( state
+                ( runState
                 , Task.perform (\_ -> DownloadResults) Time.now
                 )
             else
                 case currentTrial of
                     Launchable _ ->
-                        ( { state
-                          | debugLog = "SpacePressed"::state.debugLog
-                          }
+                        ( update_ (logMsg "SpacePressed" state) currentTrial
                         , Task.perform LaunchRocket Time.now
                         )
 
-                    _ ->
-                        ( state, Cmd.none )
+                    _ -> noOp
 
         SlashOrZPressed ->
             case currentTrial of
                 Idle _ ->
-                    ( { state | debugLog = "SlashOrZPressed"::state.debugLog
-                      }
+                    ( update_ (logMsg "SlashOrZPressed" state) currentTrial
                     , Task.perform InitTrial Time.now
                     )
 
-                _ -> (state, Cmd.none)
+                _ -> noOp
 
         InitTrial time ->
             case currentTrial of
                 Idle _ ->
-                        ( state
+                        ( runState
                         , Random.generate (RandomDelay time) (Random.float 150.0 1000.0)
                         )
 
-                _ -> (state,Cmd.none)
+                _ -> noOp
 
 
         RandomDelay time delay ->
@@ -1107,28 +1180,27 @@ updateExperimentState msg ({currentTrial} as state) =
                             , initTime = time
                             }
                     in
-                        ( { state
-                          | currentTrial = Waiting newData
-                          , debugLog = ("RandomDelay [" ++ (fromFloat delay) ++ "] ")::state.debugLog
-                          }
+                        ( update_
+                              (logMsg ("RandomDelay [" ++ (fromFloat delay) ++ "] ") state)
+                              (Waiting newData)
                         , Task.perform (StartTrial) (Process.sleep delay |> andThen (\_ -> now))
                         )
 
-                _ -> (state, Cmd.none)
+                _ -> noOp
 
         StartTrial startTime ->
             let
-                durationStr = fromFloat <| duration state.currentTrial
+                durationStr = fromFloat <| duration currentTrial
+                logStr =
+                    ( "StartTrial [time="
+                    ++ (fromInt <| posixToMillis startTime)
+                    ++ ", duration="++durationStr++"]"
+                    )
+
             in
-                ( { state
-                  | currentTrial = startTrial startTime state.currentTrial
-                  , cue = True
-                  , debugLog =
-                        ( "StartTrial [time="
-                        ++(fromInt <| posixToMillis startTime)
-                        ++", duration="++durationStr++"]"
-                        )::state.debugLog
-                  }
+                ( update_
+                    (logMsg logStr { state | cue = True })
+                    (startTrial startTime currentTrial)
                 , Task.perform
                     HideCue
                     ( Process.sleep params.cueDuration
@@ -1141,39 +1213,34 @@ updateExperimentState msg ({currentTrial} as state) =
                 cmd = Task.perform
                         ShowTarget
                         (Process.sleep
-                            ( (duration state.currentTrial)
+                            ( (duration currentTrial)
                               - params.cueDuration
         --                      - params.targetDuration / 2
                             )
                             |> andThen (\_ -> now)
                         )
+
+                logStr = "HideCue [time=" ++ (fromInt <| posixToMillis time) ++ "]"
+                    
             in
+                --case hideCue runState of
                 case currentTrial of
-                    Launchable oldData ->
-                        let
-                            newData = { oldData | cueHideTime = Just time }
-                        in
-                            ( { state
-                                | cue = False
-                                , currentTrial = Launchable newData
-                                , debugLog = ("HideCue [time="++(fromInt <| posixToMillis time)++"]")::state.debugLog
-                              }
-                            , cmd
-                            )
-
                     Launched oldData ->
-                        let
-                            newData = { oldData | cueHideTime = Just time }
-                        in
-                            ( { state
-                                | cue = False
-                                , currentTrial = Launched newData
-                                , debugLog = ("HideCue [time="++(fromInt <| posixToMillis time)++"]")::state.debugLog
-                              }
-                            , cmd
-                            )
+                        ( update_
+                            (logMsg logStr { state | cue = False })
+                            (Launched { oldData | cueHideTime = Just time })
+                        , cmd
+                        )
 
-                    _ -> (state, Cmd.none)
+                    Launchable oldData -> 
+                        ( update_
+                            (logMsg logStr { state | cue = False })
+                            (Launchable { oldData | cueHideTime = Just time })
+                        , cmd
+                        )
+        
+                    
+                    _ -> noOp
 
         ShowTarget targetTime ->
             let
@@ -1181,16 +1248,18 @@ updateExperimentState msg ({currentTrial} as state) =
             in
                 case currentTrial of
                     Launched trialData ->
-                        ( { state
-                            | target = True
-                            , currentTrial = updatedTrial
-                            , beepAt = 
-                                if result trialData then
-                                    Just targetTime
-                                else
-                                    Nothing
-                            , debugLog = "ShowTarget"::state.debugLog
-                          }
+                        ( update_
+                              (logMsg "ShowTarget"
+                                   { state
+                                   | target = True
+                                   , beepAt = 
+                                       if result trialData then
+                                           Just targetTime
+                                       else
+                                           Nothing
+                                   }
+                              )
+                              updatedTrial
                         , Task.perform
                             NextTrial
                             ( Process.sleep (params.targetDuration + params.iti)
@@ -1199,21 +1268,18 @@ updateExperimentState msg ({currentTrial} as state) =
                         )
 
                     Launchable _ ->
-                        ( { state
-                            | target = True
-                            , currentTrial = updatedTrial
-                            , debugLog = "ShowTarget"::state.debugLog
-                          }
+                        ( update_
+                            (logMsg "ShowTarget" { state | target = True })
+                            updatedTrial
                         , Cmd.none
                         )
 
-                    _ -> (state, Cmd.none)
+                    _ -> noOp
 
         LaunchRocket time ->
-            ( { state
-              | currentTrial = launchTrial time state.currentTrial
-              , debugLog = "LaunchRocket"::state.debugLog
-              }
+            ( update_
+                (logMsg "LaunchRocket" state)
+                (launchTrial time currentTrial)
             , if state.target then --target is already visible -> start new trial
                 Task.perform
                     NextTrial
@@ -1235,46 +1301,55 @@ updateExperimentState msg ({currentTrial} as state) =
                             else
                                 { trialData | currentTime = newTime }
                     in
-                        ( { state
-                          | currentTrial = Launched newData
-                          , debugLog =
+                        ( update_
+                            { state
+                            | debugLog =
                                 ("StepRocket [time="++(fromInt <| posixToMillis newTime)++"]")::state.debugLog
-                          }
+                            }
+                            (Launched newData)
                         , Cmd.none
                         )
 
-                _ -> (state, Cmd.none)
+                _ -> noOp
 
         HeightChanged h ->
             let
                 newWidth = (toFloat h) * params.aspectRatio
                 newHeight = toFloat h
             in
-            ( { state
-              | width = newWidth
-              , height = newHeight
-              , debugLog =  ("HeightChanged [h="++fromInt h++"]")::state.debugLog
-              }
+            ( update_
+                { state
+                | width = newWidth
+                , height = newHeight
+                , debugLog =  ("HeightChanged [h="++fromInt h++"]")::state.debugLog
+                }
+                currentTrial
             , Cmd.none
             )
 
-        SetDebugging bool ->
-            ( { state | debug = bool }
+        ToggleDebugging ->
+            ( update_
+                { state | debug = not state.debug }
+                currentTrial
             , Cmd.none
             )
 
         MenuToggle bool ->
-            ( { state | showMenu = Animator.go Animator.veryQuickly bool state.showMenu }
+            ( update_
+                { state | showMenu = Animator.go Animator.veryQuickly bool state.showMenu }
+                currentTrial
             , Cmd.none
             )
 
         BackgroundClick ->
-            ( { state | showMenu = Animator.go Animator.veryQuickly False state.showMenu }
+            ( update_
+                { state | showMenu = Animator.go Animator.veryQuickly False state.showMenu }
+                currentTrial
             , Cmd.none
             )
 
         DownloadDebugTrace ->
-            ( state
+            ( runState
             , Download.string
                 "modelUncertainty_debugging"
                 "text/plain"
@@ -1283,29 +1358,28 @@ updateExperimentState msg ({currentTrial} as state) =
                 
 
         DownloadResults ->
-            ( state
+            ( runState
             , downloadResults state
             )
 
         AnimationStep aType newTime ->
             case aType of
                 ToggleMenu ->
-                    ( Animator.update newTime experimentAnimator state
+                    ( updateState <| Animator.update newTime experimentAnimator state
                     , Cmd.none
                     )
                     
                 TextAlpha ->
-                    ( Animator.update newTime textAlphaAnimator2 state
+                    ( updateState <| Animator.update newTime textAlphaAnimator2 state
                     , Cmd.none
                     )
 
-                _ -> (state, Cmd.none)
+                _ -> noOp
 
-        _ ->
-            ( state, Cmd.none )
+        _ -> noOp
 
 
-downloadResults : ExperimentState -> Cmd msg
+downloadResults : ExperimentData -> Cmd msg
 downloadResults state =
     Download.string
         ("modelUncertainty_session="
@@ -1350,8 +1424,8 @@ trialData2Csv  =
         String.join "\u{000A}" << List.map trial2Csv 
 
 
-newTrial : Posix -> Profile -> Float -> Trial
-newTrial mkTime profile x =
+mkTrial : Posix -> Profile -> Float -> Trial
+mkTrial mkTime profile x =
     Idle
         { xFrac = x
         , profile = profile
@@ -1532,7 +1606,7 @@ subscriptions _ programState =
         , onResize (\w h -> HeightChanged h)
         ]
         ++ (case programState of
-                Running state ->
+                Running (state,_) ->
                     [ Animator.toSubscription (AnimationStep ToggleMenu) state experimentAnimator
                     , Animator.toSubscription (AnimationStep TextAlpha) state textAlphaAnimator2
                     ]
@@ -1543,13 +1617,17 @@ subscriptions _ programState =
                     , Animator.toSubscription (AnimationStep TextAlpha) state textAlphaAnimator1
                     ]
                 
+                Registering _ _ -> [Sub.none]
+
+                BuildState _ _ _ _ -> [Sub.none]
+
                 Fetching _ -> [Sub.none]
             )
 
 rocketAnimationSub : ProgramState -> Sub Msg
 rocketAnimationSub programState =
     case programState of
-        Running ({currentTrial} as state) ->
+        Running (_,currentTrial) ->
             case currentTrial of
                 Launched trialData ->
                     if (not <| hasEnded trialData) then
@@ -1607,22 +1685,26 @@ view _ programState =
             Initializing state ->
                 viewWelcome state
 
-            Running state ->
+            Running ((state,currentTrial) as runState) ->
                 row
                     [ height fill
                     , width fill
-                    , inFront (menuPanel state)
+                    , inFront (menuPanel state.showMenu (Just state))
                     ]
                     ( if trialIdx state <= nTrials state.sessionType then
-                        viewExperiment state
+                        viewExperiment runState
                     else
                         viewSessionEnd state
                     )
 
+            Registering _ _ -> el [] <| text "Registering"
+
+            BuildState _ _ _ _ -> Element.none
+
             Fetching _ -> Element.none
             )
 
-viewExperiment : ExperimentState -> List (Element Msg)
+viewExperiment : RunState -> List (Element Msg)
 viewExperiment state =
     [ el [width fill] none
     , vertSeparator
@@ -1637,7 +1719,7 @@ viewExperiment state =
     , el [width fill] none
     ]
 
-viewSessionEnd : ExperimentState -> List (Element Msg)
+viewSessionEnd : ExperimentData -> List (Element Msg)
 viewSessionEnd state =
     [ column
         [ centerX
@@ -1687,8 +1769,10 @@ viewDebugLog programState =
         (doDebug, log) = 
             ( case programState of
                 Initializing state -> (state.debug, state.debugLog)
-                Running state -> (state.debug, state.debugLog)
+                Running (state,_) -> (state.debug, state.debugLog)
                 Fetching state -> (True, state.debugLog)
+                Registering state _ -> (state.debug,state.debugLog)
+                BuildState state _ _ _ -> (state.debug, state.debugLog)
             )
     in
         if doDebug then
@@ -1716,11 +1800,11 @@ viewDebugEntries log =
 viewWelcome : SetupState -> Element Msg
 viewWelcome state = 
     let
-        showHelp = Animator.current state.showHelp
+        helpShown = Animator.current state.helpShown
         helpPage = Animator.current state.helpPage
 
         modifier = 
-            Animator.linear state.showHelp <|
+            Animator.linear state.helpShown <|
                 \b ->
                     if b then
                         Animator.at 0
@@ -1851,7 +1935,7 @@ viewWelcome state =
                 , onClick SpacePressed
                 ]
                 [ text <|
-                    if (not showHelp) && (helpPage + 1) >= nHelpPages then
+                    if (not helpShown) && (helpPage + 1) >= nHelpPages then
                         "press Space to start"
                     else
                         "press Space"
@@ -1866,7 +1950,7 @@ viewHelp : SetupState -> Element Msg
 viewHelp state =
     let 
 
-        showHelp = Animator.current state.showHelp
+        helpShown = Animator.current state.helpShown
         helpPage = Animator.current state.helpPage
 
         radius = 12
@@ -1883,7 +1967,7 @@ viewHelp state =
         cyan =  (el [Font.color <| rgb 0 1 1])
 
         modifier = 
-            Animator.linear state.showHelp <|
+            Animator.linear state.helpShown <|
                 \b ->
                     if b then
                         Animator.at 1
@@ -1891,7 +1975,7 @@ viewHelp state =
                         Animator.at 0
 
         lateModifier =
-            Animator.linear state.showHelp <|
+            Animator.linear state.helpShown <|
                 \b ->
                     if b then
                         Animator.at 1
@@ -2149,8 +2233,8 @@ viewHelpButton radius =
         <| text "?"
     
 
-viewScreen : ExperimentState -> Element Msg
-viewScreen state = 
+viewScreen : RunState -> Element Msg
+viewScreen ((state,currentTrial) as runState) = 
     let
         safeWidth = state.width + 2 * (drawPaddingX state)
     in
@@ -2185,20 +2269,20 @@ viewScreen state =
                 , SA.height <| fromFloat state.height
                 ]
                 []
-            :: drawCue state
-            ++ drawTarget state
-            ++ drawRocket state
-            ++ drawFeedback state
+            :: drawCue runState
+            ++ drawTarget runState
+            ++ drawRocket runState
+            ++ drawFeedback runState
 
 
-drawPaddingX : ExperimentState -> Float
+drawPaddingX : ExperimentData -> Float
 drawPaddingX state =
     (getRocketRadius state)
 
 
-drawRocket : ExperimentState -> List (Svg Msg)
-drawRocket ({currentTrial} as state) =
-        case state.currentTrial of
+drawRocket : RunState -> List (Svg Msg)
+drawRocket (state,currentTrial) =
+        case currentTrial of
             Launched trialData ->
                 let
                     rocket =
@@ -2212,11 +2296,11 @@ drawRocket ({currentTrial} as state) =
             _ -> []
 
 
-drawCue : ExperimentState -> List (Svg Msg)
-drawCue state = 
+drawCue : RunState -> List (Svg Msg)
+drawCue ((state,_) as runState) = 
     if state.cue then
         Svg.rect
-            [ SA.x <| fromFloat <| getCueX state + (drawPaddingX state)
+            [ SA.x <| fromFloat <| getCueX runState + (drawPaddingX state)
             , SA.y <| fromFloat <| getStartY state
             , SA.width <| fromFloat <| getCueWidth state
             , SA.height <| fromFloat <| getCueHeight state
@@ -2238,10 +2322,10 @@ pointsToString points =
             fromFloat x ++ "," ++ fromFloat y ++ " " ++ pointsToString ps
 
 
-drawTarget : ExperimentState -> List (Svg Msg)
-drawTarget state =
+drawTarget : RunState -> List (Svg Msg)
+drawTarget ((state,currentTrial) as runState) =
     let
-        x = getX state + (drawPaddingX state)
+        x = getX runState + (drawPaddingX state)
     in
     if state.target then
         Svg.polygon
@@ -2256,8 +2340,8 @@ drawTarget state =
         []
 
 
-drawFeedback : ExperimentState -> List (Svg Msg)
-drawFeedback ({currentTrial} as state) =
+drawFeedback : RunState -> List (Svg Msg)
+drawFeedback (state,currentTrial) =
         case currentTrial of
             Launched trialData ->
                 let
@@ -2340,8 +2424,8 @@ makeCheckmarkPolygonPoints (x,y) w =
     ]
 
 
-getX : ExperimentState -> Float
-getX ({currentTrial} as state) =
+getX : RunState -> Float
+getX (state,currentTrial) =
     let 
         xFrac =
             case currentTrial of
@@ -2353,22 +2437,22 @@ getX ({currentTrial} as state) =
         xFrac * state.width
 
 
-getCueX : ExperimentState -> Float
-getCueX state =
-    getX state - (getCueWidth state) / 2
+getCueX : RunState -> Float
+getCueX ((state,_) as runState) =
+    getX runState - (getCueWidth state) / 2
 
 
-getStartY : ExperimentState -> Float
+getStartY : ExperimentData -> Float
 getStartY state =
     (1 - params.startYFrac) * state.height
 
 
-getTargetY : ExperimentState -> Float
+getTargetY : ExperimentData -> Float
 getTargetY state =
     (1 - params.targetYFrac) * state.height
 
 
-getRocketY : TrialData -> ExperimentState -> Float
+getRocketY : TrialData -> ExperimentData -> Float
 getRocketY trialData state =
     let
         dt = toFloat
@@ -2382,27 +2466,27 @@ getRocketY trialData state =
         state.height * (1 - (params.startYFrac + flightDist * dy))
 
 
-getRocketRadius : ExperimentState -> Float
+getRocketRadius : ExperimentData -> Float
 getRocketRadius state =
     params.rocketSizeFrac * state.height
 
 
-getCueWidth : ExperimentState -> Float
+getCueWidth : ExperimentData -> Float
 getCueWidth state =
     params.cueWidthFrac * state.height
 
 
-getCueHeight : ExperimentState -> Float
+getCueHeight : ExperimentData -> Float
 getCueHeight state =
     (getCueWidth state) / 5
 
 
-getTargetSize : ExperimentState -> Float
+getTargetSize : ExperimentData -> Float
 getTargetSize state =
     params.targetSizeFrac * state.height
 
 
-getFeedbackSize : ExperimentState -> Float
+getFeedbackSize : ExperimentData -> Float
 getFeedbackSize state =
     params.feedbackSizeFrac * state.height
 
@@ -2568,8 +2652,8 @@ menuButton buttonColor attrs msg =
             <| List.repeat 3 (dot radius)
 
 
-menuPanel : ExperimentState -> Element Msg
-menuPanel state =
+menuPanel : Animator.Timeline Bool -> Maybe ExperimentData-> Element Msg
+menuPanel timeline maybeState =
     let
         buttonWidth = 30
         buttonHeight = 48
@@ -2578,7 +2662,7 @@ menuPanel state =
         menuHeight = 420--390
 
         modifier = 
-            Animator.linear state.showMenu <|
+            Animator.linear timeline <|
                 \b ->
                     if b then
                         Animator.at 1
@@ -2588,7 +2672,7 @@ menuPanel state =
         w = interpolate buttonWidth menuWidth modifier
         h = interpolate buttonHeight menuHeight modifier
         bg = fromRgb <| Color.toRgba <| Animator.color
-                state.showMenu
+                timeline
                 ( \s ->
                     if s then
                         Color.rgb grays.lightgray grays.lightgray grays.lightgray
@@ -2598,8 +2682,8 @@ menuPanel state =
                 
                 
 
-        onClickMsg = (MenuToggle (not <| Animator.current state.showMenu))
-        showMenu = Animator.current state.showMenu
+        onClickMsg = (MenuToggle (not <| Animator.current timeline))
+        showMenu = Animator.current timeline
     in
     el
         [ width fill
@@ -2644,13 +2728,8 @@ menuPanel state =
                     ]
                     [ button
                         [centerX]
-                        { onPress = Just <| SetDebugging (not state.debug)
-                        , label = text
-                            ( if state.debug then
-                                "Hide debugging"
-                            else
-                                "Show debugging"
-                            )
+                        { onPress = Just <| ToggleDebugging
+                        , label = text "Toggle debugging"
                         }
                     , button
                         [centerX]
@@ -2704,16 +2783,20 @@ menuPanel state =
                             , Font.medium
                             , spacing 15
                             ]
-                            [ text
-                                <| (fromInt <| (trialIdx state) - 1)
-                                ++ " of " ++ (fromInt <| nTrials state.sessionType)
-                            , text
-                                <| ((fromInt << round << (*) 100 << successRate) state.results) ++ "%"
-                            , (case state.sessionType of
-                                Train _ -> text "Train"
-                                Test _ -> text "Test"
+                            (case maybeState of
+                                Just state ->
+                                    [ text
+                                        <| (fromInt <| (trialIdx state) - 1)
+                                        ++ " of " ++ (fromInt <| nTrials state.sessionType)
+                                    , text
+                                        <| ((fromInt << round << (*) 100 << successRate) state.results) ++ "%"
+                                    , (case state.sessionType of
+                                        Train _ -> text "Train"
+                                        Test _ -> text "Test"
+                                    )
+                                    ]
+                                Nothing -> []
                             )
-                            ]
                         ]
                     ]
                 ]
@@ -2735,7 +2818,7 @@ menuPanel state =
 renderAudio : AudioData -> ProgramState -> Audio
 renderAudio _ programState = 
     case programState of
-        Running state ->
+        Running (state,_) ->
             case state.beep of
                 Just beepSound ->
                     case state.beepAt of
@@ -2753,7 +2836,7 @@ renderAudio _ programState =
 -- ANIMATOR
 
 
-experimentAnimator : Animator.Animator ExperimentState
+experimentAnimator : Animator.Animator ExperimentData
 experimentAnimator =
     Animator.animator
         |> Animator.watching
@@ -2767,9 +2850,9 @@ helpVisibilityAnimator : Animator.Animator SetupState
 helpVisibilityAnimator =
     Animator.animator
         |> Animator.watching
-            .showHelp
+            .helpShown
             (\newShowHelp model ->
-                { model | showHelp = newShowHelp }
+                { model | helpShown = newShowHelp }
             )
 
 
@@ -2792,7 +2875,7 @@ textAlphaAnimator1 =
                 { model | textAlpha = newAlpha }
             )
 
-textAlphaAnimator2 : Animator.Animator ExperimentState
+textAlphaAnimator2 : Animator.Animator ExperimentData
 textAlphaAnimator2 =
     Animator.animator
         |> Animator.watching

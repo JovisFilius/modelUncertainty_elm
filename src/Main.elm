@@ -17,6 +17,7 @@ import Browser
 import Browser.Events
     exposing
         ( onKeyPress
+        , onKeyDown
         , onAnimationFrame
         , onResize
         )
@@ -26,6 +27,7 @@ import Browser.Dom
         , getViewport
         )
 
+import Char as C
 import Color
 
 import Element exposing (..)
@@ -52,6 +54,10 @@ import Html
 
 import Json.Decode as Decode
 import Json.Encode as Encode
+
+import List as L
+
+import Maybe as M
 
 import Process
 
@@ -235,12 +241,12 @@ todo =
 
 
 nHelpPages : Int
-nHelpPages = List.length <| help 0
+nHelpPages = L.length <| help 0
 
 help : Float -> List (List (Element Msg), Element Msg)
 help fontSize =
     let
-        p = List.map (\str -> paragraph [] [ text str ]) << String.lines
+        p = L.map (\str -> paragraph [] [ text str ]) << S.lines
     in
     [ ( p """Welcome!
     This is an experiment in the form of a game. It is designed to investigate the human ability to learn and predict intervals of time.
@@ -324,7 +330,8 @@ type ProgramState
         , debugLog : List String
         }
     | Initializing SetupState
-    | Registering SetupState (Maybe Char, Maybe Char, Maybe Char)
+    --| Registering SetupState (Maybe Char, Maybe Char, Maybe Char)
+    | Registering SetupState (List Char) Bool
     | BuildState
         ExperimentData
         (Maybe Posix)
@@ -363,8 +370,16 @@ type alias ExperimentData =
     , width : Float 
     }
 
-buildState : ExperimentData -> Maybe Posix -> ProgramState
-buildState state time = BuildState state time Nothing Nothing
+buildState : ExperimentData -> ProgramState
+buildState state = BuildState state Nothing Nothing Nothing
+
+run : ProgramState -> ProgramState
+run progState =
+    case progState of
+        BuildState data (Just time) (Just profile) (Just x) ->
+            Running (data, mkTrial time profile x)
+
+        _ -> progState
 
 initState : Float -> TrainSeq -> List String -> ProgramState
 initState h seq log =
@@ -511,7 +526,7 @@ type alias TrialData =
 
 trialIdx : ExperimentData -> Int
 trialIdx state =
-    state.results |> List.length |> (+) 1
+    state.results |> L.length |> (+) 1
 
 
 statusToString : Trial -> String
@@ -561,10 +576,10 @@ sessionType2Str : SessionType -> String
 sessionType2Str sess =
     case sess of
         Train (m1,m2,m3) ->
-            "train" ++ String.concat (List.map modelId2Str [m1,m2,m3])
+            "train" ++ S.concat (L.map modelId2Str [m1,m2,m3])
 
         Test (m0,(m1,m2,m3),(m4,m5,m6)) ->
-            "test" ++ String.concat (List.map modelId2Str [m0,m1,m2,m3,m4,m5,m6])
+            "test" ++ S.concat (L.map modelId2Str [m0,m1,m2,m3,m4,m5,m6])
 
 
 nTrials : SessionType -> Int
@@ -671,7 +686,9 @@ type Msg
     --| SetDebugging Bool
     | ToggleDebugging
     | Register
+    | Blink
     | InputChar Char
+    | Enter
     | BackSpace
     | HeightChanged Int
     | MenuToggle Bool
@@ -684,7 +701,7 @@ type Msg
     | SetTestSession TestSeq
     | SampleTrainSession
     | SetTrainSession TrainSeq
-    | SpacePressed
+    | Space
     | SlashOrZPressed
     | NextTrial Posix
     | TimeStamp Posix
@@ -711,11 +728,40 @@ logMsg : String -> { a | debugLog : List String } -> { a | debugLog : List Strin
 logMsg msg state =
     { state | debugLog = msg :: state.debugLog }
 
+newTrialCmd : ExperimentData -> Cmd Msg
+newTrialCmd state =
+    Cmd.batch 
+        [ Random.generate
+            RandomProfile
+            (getDistModel
+                <| getModelId ((trialIdx state) + 1) state.sessionType
+            )
+        , Random.generate (RandomX) (Random.float 0 1)
+        , Task.perform TimeStamp Time.now
+        , Task.perform viewport2HeightChanged getViewport
+        ]
+
+saveTrial : RunState -> RunState
+saveTrial ((state,trial) as runState) =
+    case trial of
+        Launched trialData ->
+            (logMsg
+                ("MakeTrial [trialIdx="++(fromInt <| trialIdx state)++"]")
+                { state
+                | target = False
+                , results = state.results ++ [trialData]
+                , totalScore = state.totalScore + (score << error) trialData
+                }
+            , trial
+            )
+
+        _ -> runState
 
 update : AudioData -> Msg -> ProgramState -> (ProgramState, Cmd Msg, AudioCmd Msg)
 update _ msg programState =
     let
         noCmd newState = (newState, Cmd.none, Audio.cmdNone)
+        noOp = noCmd programState
     in
     case programState of
         Fetching state ->
@@ -754,60 +800,76 @@ update _ msg programState =
 
                 (_,_,_) -> (programState, Cmd.none, Audio.cmdNone)
 
-        Registering state maybeChars ->
+        Registering state idChars cursorVisible ->
+            let
+                updateState newS = Registering newS idChars cursorVisible
+            in
             case msg of
+                Blink ->
+                    noCmd <| Registering state idChars (not cursorVisible)
+
+                AnimationStep TextAlpha newAlpha ->
+                    noCmd <| updateState <| Animator.update newAlpha textAlphaAnimator1 state
+
                 InputChar char ->
-                    let
-                        insertChar  : Char -> (Maybe Char, Maybe Char, Maybe Char) ->
-                                        (Maybe Char, Maybe Char, Maybe Char)
-                        insertChar newC cs =
-                            case cs of
-                                (Nothing,b,c) -> (Just newC, b, c)
-                                (a,Nothing,c) -> (a, Just newC, c)
-                                (a,b,Nothing) -> (a, b, Just newC)
-                                _ -> cs
-                    in
-                        noCmd <| Registering state (insertChar char maybeChars)
+                    noCmd <| Registering state (idChars ++ [char]) cursorVisible
 
                 BackSpace ->
                     let
-                        delChar : (Maybe Char, Maybe Char, Maybe Char) ->
-                                        (Maybe Char, Maybe Char, Maybe Char)
-                        delChar cs =
-                            case cs of
-                                (a,b,Just c) -> (a,b,Nothing)
-                                (a,Just b,c) -> (a,Nothing,c)
-                                (Just a,b,c) -> (Nothing,b,c)
-                                _ -> cs
+                        delChar : List Char -> List Char 
+                        delChar = L.reverse << safeTail << L.reverse
+--                            case cs of
+--                                (a,b,Just c) -> (a,b,Nothing)
+--                                (a,Just b,c) -> (a,Nothing,c)
+--                                (Just a,b,c) -> (Nothing,b,c)
+--                                _ -> cs
                     in
-                        noCmd <| Registering state (delChar maybeChars)
+                        noCmd
+                            <| Registering
+                                (logMsg "Deleting char" state)
+                                (delChar idChars)
+                                cursorVisible
 
-                SpacePressed ->
-                    case maybeChars of
-                        (Just a, Just b, Just c) ->
-                            let
-                                id = String.concat <| List.map String.fromChar [a,b,c]
-                            in
-                            noCmd <|
-                                buildState (initExperiment state id) Nothing
-
-                        (_,_,_) -> noCmd programState
+                Enter ->
+                    if L.length idChars < 3
+                    then noOp
+                    else
+                        let
+                            id = (S.fromList idChars)
+                            expData = initExperiment state id
+                        in
+                        ( buildState expData
+                        , newTrialCmd expData
+                        , Audio.cmdNone
+                        )
+--                    case idChars of
+--                        (Just a, Just b, Just c) ->
+--                            let
+--                                id = S.concat <| L.map S.fromChar [a,b,c]
+--                            in
+--                            noCmd <|
+--                                buildState (initExperiment state id) Nothing
+--
+--                        (_,_,_) -> noCmd programState
 
                 ToggleDebugging ->
-                    noCmd <| Registering { state | debug = not state.debug } maybeChars
+                    noCmd <| updateState { state | debug = not state.debug }
+
+                Debug str ->
+                    noCmd <| Registering (logMsg str state) idChars cursorVisible
 
                 _ -> noCmd programState
 
         BuildState state time_ profile_ x_ ->
             case (msg, (time_, profile_, x_)) of
                 (TimeStamp t, (Nothing, _, _)) ->
-                    noCmd <| BuildState state (Just t) profile_ x_
+                    noCmd <| run <| BuildState state (Just t) profile_ x_
 
                 (RandomProfile p, (_, Nothing, _)) ->
-                    noCmd <| BuildState state time_ (Just p) x_
+                    noCmd <| run <| BuildState state time_ (Just p) x_
 
                 (RandomX x, (_, _, Nothing)) ->
-                    noCmd <| BuildState state time_ profile_ (Just x)
+                    noCmd <| run <| BuildState state time_ profile_ (Just x)
 
                 _ -> noCmd programState
 
@@ -816,24 +878,8 @@ update _ msg programState =
                 NextTrial time ->
                     case currentTrial of
                         Launched trialData ->
-                            ( buildState
-                                (logMsg
-                                    ("MakeTrial [trialIdx="++(fromInt <| trialIdx state)++"]")
-                                    { state
-                                    | target = False
-                                    , results = state.results ++ [trialData]
-                                    , totalScore = state.totalScore + (score << error) trialData
-                                    }
-                                )
-                                (Just time)
-                            , Cmd.batch 
-                                [ Random.generate
-                                    RandomProfile
-                                    (getDistModel
-                                        <| getModelId ((trialIdx state) + 1) state.sessionType
-                                    )
-                                , Random.generate (RandomX) (Random.float 0 1)
-                                ]
+                            ( buildState <| (\(a,b) -> a) <| saveTrial runState
+                            , newTrialCmd state
                             , Audio.cmdNone
                             )
 
@@ -849,10 +895,10 @@ update _ msg programState =
         Initializing state -> 
             case msg of
                 Register ->
-                    noCmd <| Registering state (Nothing, Nothing, Nothing)
+                    noCmd <| Registering state [] True
 
 --                TimeAndRandomProfileAndX time profile x ->
---                    ( Maybe.withDefault programState <|
+--                    ( M.withDefault programState <|
 --                        initExperiment state time profile x
 --                    , Task.perform viewport2HeightChanged getViewport
 --                    , Audio.cmdNone
@@ -930,7 +976,7 @@ updateSetupState msg state =
 --                (Random.float 0 1)
 --            )
 
-        SpacePressed ->
+        Space ->
             let
                 helpPage = Animator.current state.helpPage
                 helpShown = Animator.current state.helpShown
@@ -967,8 +1013,8 @@ updateSetupState msg state =
             , Cmd.none
             )
 
-        AnimationStep aType newTime ->
-            case aType of
+        AnimationStep animation newTime ->
+            case animation of
                 ChangeHelpPage ->
                     ( Animator.update newTime helpPageAnimator state
                     , Cmd.none
@@ -995,7 +1041,7 @@ sampleTrainSession = Random.generate (SetTrainSession) (Random.map trainSeq (Ran
 --testRunUpdate : Msg -> ExperimentData -> (ExperimentData, Cmd Msg)
 --testRunUpdate msg ({currentTrial} as state) =
 --    case msg of
---        SpacePressed ->
+--        Space ->
 --            if sessionComplete state then
 --                ( state
 --                , Task.perform (\_ -> DownloadResults) Time.now
@@ -1135,7 +1181,7 @@ updateRunningState msg ((state,currentTrial) as runState) =
 --            , Cmd.none
 --            )
 
-        SpacePressed ->
+        Space ->
             if sessionComplete state then
                 ( runState
                 , Task.perform (\_ -> DownloadResults) Time.now
@@ -1143,7 +1189,7 @@ updateRunningState msg ((state,currentTrial) as runState) =
             else
                 case currentTrial of
                     Launchable _ ->
-                        ( update_ (logMsg "SpacePressed" state) currentTrial
+                        ( update_ (logMsg "Space" state) currentTrial
                         , Task.perform LaunchRocket Time.now
                         )
 
@@ -1384,6 +1430,8 @@ downloadResults state =
     Download.string
         ("modelUncertainty_session="
         ++ sessionType2Str state.sessionType
+        ++ "_id="
+        ++ state.participantId
         )
         "text/csv"
         (trialData2Csv state.results)
@@ -1396,7 +1444,7 @@ trialData2Csv  =
             let
                 startMillis = posixToMillis trial.startTime
             in
-                String.join ","
+                S.join ","
                     [ fromFloat trial.xFrac
                     , fromFloat <| duration (Launched trial)
                     , fromInt
@@ -1406,22 +1454,22 @@ trialData2Csv  =
                     , fromInt <| posixToMillis trial.makeTime
                     , fromInt <| posixToMillis trial.initTime
                     , fromInt <| posixToMillis trial.startTime
-                    , Maybe.withDefault
+                    , M.withDefault
                         "NaN"
-                        ( Maybe.map
+                        ( M.map
                             (fromInt << posixToMillis) trial.cueHideTime
                         )
                     , fromInt <| posixToMillis trial.launchTime
-                    , Maybe.withDefault
+                    , M.withDefault
                         "NaN"
-                        ( Maybe.map
+                        ( M.map
                             (fromInt << posixToMillis)
                             --(fromInt << (\eT -> eT - startMillis) << posixToMillis)
                             trial.measuredEndTime
                         )
                     ]
     in
-        String.join "\u{000A}" << List.map trial2Csv 
+        S.join "\u{000A}" << L.map trial2Csv 
 
 
 mkTrial : Posix -> Profile -> Float -> Trial
@@ -1530,9 +1578,9 @@ successRate results =
     let
         boolToFloat b = if b then 1 else 0
         
-        n = toFloat <| List.length results
+        n = toFloat <| L.length results
     in
-        (List.sum <| List.map (boolToFloat << result) results) / n
+        (L.sum <| L.map (boolToFloat << result) results) / n
 
 
 score : Int -> Int
@@ -1602,7 +1650,7 @@ subscriptions _ programState =
     Sub.batch
         <|
         [ rocketAnimationSub programState
-        , onKeyPress keyDecoder
+        , onKeyPress <| keyDecoderWith actionKeyFilter
         , onResize (\w h -> HeightChanged h)
         ]
         ++ (case programState of
@@ -1617,12 +1665,20 @@ subscriptions _ programState =
                     , Animator.toSubscription (AnimationStep TextAlpha) state textAlphaAnimator1
                     ]
                 
-                Registering _ _ -> [Sub.none]
+                Registering state _ _ ->
+                    [ onKeyPress idCharDecoder
+                    , onKeyDown <| keyDecoderWith backSpaceFilter
+                    , Animator.toSubscription (AnimationStep TextAlpha) state textAlphaAnimator1
+                    , Time.every 200 (\_ -> Blink)
+                    ]
 
                 BuildState _ _ _ _ -> [Sub.none]
 
                 Fetching _ -> [Sub.none]
             )
+
+toggleSub : Bool -> Sub msg -> Sub msg
+toggleSub on sub = if on then sub else Sub.none
 
 rocketAnimationSub : ProgramState -> Sub Msg
 rocketAnimationSub programState =
@@ -1639,16 +1695,56 @@ rocketAnimationSub programState =
         _ ->
             Sub.none
 
-keyDecoder : Decode.Decoder Msg
-keyDecoder =
-    Decode.map filterKey <| Decode.field "key" Decode.string
+
+keyDecoder : Decode.Decoder String
+keyDecoder = Decode.field "key" Decode.string
+
+keyDecoderWith : (String -> Msg) -> Decode.Decoder Msg
+keyDecoderWith filter = Decode.map filter <| keyDecoder
+
+backSpaceFilter : String -> Msg
+backSpaceFilter s =
+    if s == "Backspace"
+    then BackSpace
+    else NoOp
+
+idCharDecoder : Decode.Decoder Msg
+idCharDecoder =
+    let
+        filter : String -> Msg
+        filter s =
+            if S.length s == 1 then
+                filterAlpha s
+            else if s == "Enter" then
+                Enter
+            else if s == " " then
+                Space
+            else if s == "backspace" then
+                BackSpace
+            else
+                Debug s
+
+        filterAlpha : String -> Msg
+        filterAlpha s =
+            M.withDefault (Debug s)
+                <| M.map (InputChar << C.toUpper) -- lift the Msg constructor and the toUpper conversion inside the Maybe value
+                <| L.head -- take the head of the list or Nothing
+                <| L.filter C.isAlpha -- drop nonAlpha chars
+                <| S.toList -- convert to list of chars
+                <| S.left 1 s -- take leftmost char in string
+    in
+        Decode.map filter <| Decode.field "key" Decode.string
+            
+--keyDecoder : Decode.Decoder Msg
+--keyDecoder =
+--    Decode.map filterKey <| Decode.field "key" Decode.string
 
 
-filterKey : String -> Msg
-filterKey str =
+actionKeyFilter : String -> Msg
+actionKeyFilter str =
     case str of
         " " ->
-            SpacePressed
+            Space
 
         "z" ->
             SlashOrZPressed
@@ -1697,7 +1793,7 @@ view _ programState =
                         viewSessionEnd state
                     )
 
-            Registering _ _ -> el [] <| text "Registering"
+            Registering state idChars cursorVisible -> viewRegistering state idChars cursorVisible
 
             BuildState _ _ _ _ -> Element.none
 
@@ -1771,7 +1867,7 @@ viewDebugLog programState =
                 Initializing state -> (state.debug, state.debugLog)
                 Running (state,_) -> (state.debug, state.debugLog)
                 Fetching state -> (True, state.debugLog)
-                Registering state _ -> (state.debug,state.debugLog)
+                Registering state _ _ -> (state.debug,state.debugLog)
                 BuildState state _ _ _ -> (state.debug, state.debugLog)
             )
     in
@@ -1795,6 +1891,77 @@ viewDebugEntries log =
 
         msg::msgs ->
             text msg :: viewDebugEntries msgs
+
+
+viewRegistering : SetupState -> List Char -> Bool -> Element msg
+viewRegistering state idChars cursorVisible =
+    let
+        --mC2String : Maybe Char -> String
+        --mC2String mC = M.withDefault "_" (M.map S.fromChar mC)
+
+        --viewChar : Maybe Char -> Element msg
+        viewChar : Char -> Element msg
+        viewChar c =
+            el
+                [ Font.medium
+                , Font.size 64
+                ]
+                <| text <| S.fromChar c
+                --<| text <| mC2String mC
+
+        viewCursor : Bool -> Element msg
+        viewCursor b =
+            let alpha_ = if b then 1 else 0
+            in el [ alpha alpha_ ] <| viewChar '_'
+
+        viewId : List Char -> Element msg
+        viewId chars =
+            row
+                [ spacing 16
+                , height <| px 64
+                ]
+                <| (L.map viewChar chars) ++ [viewCursor cursorVisible]
+
+        confirmationMsg : Bool -> Element msg
+        confirmationMsg b =
+            if b
+            then none
+            else
+                el
+                    [ centerX
+                    , centerY
+                    , alpha <|
+                        Animator.move
+                            state.textAlpha
+                            (\_ -> Animator.loop
+                                (Animator.millis 2200)
+                                (Animator.wave 0.3 1)
+                            )
+                    ]
+                    <| text "press Enter to confirm"
+    in
+    column
+        [ centerX
+        , centerY
+        , height fill
+        ]
+        [ el [ height <| fillPortion 3 ] none
+        , el
+            [ Font.light
+            , Font.size 48
+            , centerX
+            ] <| text "type your identifier"
+        , el [ height <| fillPortion 1 ] none
+        , el
+            [ centerX
+            ]
+            <| viewId idChars
+        , el
+            [ height <| fillPortion 3
+            , width fill
+            ]
+            <| confirmationMsg (L.length idChars < 3)
+        ]
 
 
 viewWelcome : SetupState -> Element Msg
@@ -1932,7 +2099,7 @@ viewWelcome state =
                             (Animator.millis 2200)
                             (Animator.wave 0.3 1)
                         )
-                , onClick SpacePressed
+                , onClick Space
                 ]
                 [ text <|
                     if (not helpShown) && (helpPage + 1) >= nHelpPages then
@@ -1995,7 +2162,7 @@ viewHelp state =
                     fontSize = fontMin + (fontMax - fontMin) * pageModifier
 
                     (helpText, helpGraphics) =
-                        Maybe.withDefault ([], none) <| getListEntry i (help fontSize)
+                        M.withDefault ([], none) <| getListEntry i (help fontSize)
 
                     pageModifier =
                         Animator.linear state.helpPage <|
@@ -2054,7 +2221,7 @@ viewHelp state =
                     --, height <| px <| round <| modifier * pageHeightMax
                     , paddingXY textPadding 0
                     ]
-                    <| List.map viewHelpPage <| List.range 0 nHelpPages
+                    <| L.map viewHelpPage <| L.range 0 nHelpPages
                 , (if helpPage + 1 < nHelpPages then
                     el
                         [ onClick <| SetHelpPage (helpPage + 1)
@@ -2104,7 +2271,7 @@ arrowHeadLeft h =
         arrowHead : Float -> Svg Msg
         arrowHead offsetX =
             Svg.polyline
-                [ SA.points <| pointsToString (List.map (\(x,y) -> (x+offsetX,y)) linePoints)
+                [ SA.points <| pointsToString (L.map (\(x,y) -> (x+offsetX,y)) linePoints)
                 , SA.stroke <| svgGray grays.lightgray
                 , SA.strokeWidth <| fromFloat <| 2
                 , SA.fillOpacity "0"
@@ -2130,7 +2297,7 @@ arrowHeadRight h =
         arrowHead : Float -> Svg Msg
         arrowHead offsetX =
             Svg.polyline
-                [ SA.points <| pointsToString (List.map (\(x,y) -> (x+offsetX,y)) linePoints)
+                [ SA.points <| pointsToString (L.map (\(x,y) -> (x+offsetX,y)) linePoints)
                 , SA.stroke <| svgGray grays.lightgray
                 , SA.strokeWidth <| fromFloat <| 2
                 , SA.fillOpacity "0"
@@ -2156,7 +2323,7 @@ arrowHeadsDown w =
         arrowHead : Float -> Svg Msg
         arrowHead offsetY =
             Svg.polyline
-                [ SA.points <| pointsToString (List.map (\(x,y) -> (x,y + offsetY)) linePoints)
+                [ SA.points <| pointsToString (L.map (\(x,y) -> (x,y + offsetY)) linePoints)
                 , SA.stroke <| svgGray grays.lightgray
                 , SA.strokeWidth <| fromFloat <| 2
                 , SA.fillOpacity "0"
@@ -2183,7 +2350,7 @@ arrowHeadsUp w =
         arrowHead : Float -> Svg Msg
         arrowHead offsetY =
             Svg.polyline
-                [ SA.points <| pointsToString (List.map (\(x,y) -> (x,y + offsetY)) linePoints)
+                [ SA.points <| pointsToString (L.map (\(x,y) -> (x,y + offsetY)) linePoints)
                 , SA.stroke <| svgGray grays.lightgray
                 , SA.strokeWidth <| fromFloat <| 2
                 , SA.fillOpacity "0"
@@ -2253,8 +2420,8 @@ viewScreen ((state,currentTrial) as runState) =
             [ SA.width <| fromFloat safeWidth
             , SA.height <| fromFloat state.height
             , SA.viewBox
-                <| String.join " "
-                    ( List.map fromFloat
+                <| S.join " "
+                    ( L.map fromFloat
                         [ 0
                         , 0
                         , safeWidth
@@ -2509,9 +2676,9 @@ svgGray : Float -> String
 svgGray t =
     let
         scaledTint = t * 255
-        mkStrings = List.map fromFloat << List.repeat 3
+        mkStrings = L.map fromFloat << L.repeat 3
     in
-        "rgb(" ++ String.join "," (mkStrings scaledTint) ++ ")"
+        "rgb(" ++ S.join "," (mkStrings scaledTint) ++ ")"
 
 background = rgb 0.2 0.2 0.2
 gray = rgb 0.6 0.6 0.6
@@ -2542,9 +2709,9 @@ grayGradient min max =
                 ]
                 none
 
-        leftPart = List.map graytint tints
+        leftPart = L.map graytint tints
     in
-        leftPart ++ (List.reverse leftPart)
+        leftPart ++ (L.reverse leftPart)
 
 horzSeparator_ : Float -> Float -> Element msg
 horzSeparator_ min max =
@@ -2563,7 +2730,7 @@ horzSeparator_ min max =
                 ]
                 none
     in
-        row [width fill] <| List.map sep <| grayGradient min max
+        row [width fill] <| L.map sep <| grayGradient min max
 
 horzSeparator : Element msg
 horzSeparator = horzSeparator_ 0.25 0.55
@@ -2592,7 +2759,7 @@ vertSeparator =
         column [height fill]
             ( [ el [height <| fillPortion 5] none
               ]
-              ++ (List.map sep <| grayGradient 0.25 0.55)
+              ++ (L.map sep <| grayGradient 0.25 0.55)
               ++ [ el [height <| fillPortion 5] none
               ]
             )
@@ -2649,7 +2816,7 @@ menuButton buttonColor attrs msg =
               ]
               ++ attrs
             )
-            <| List.repeat 3 (dot radius)
+            <| L.repeat 3 (dot radius)
 
 
 menuPanel : Animator.Timeline Bool -> Maybe ExperimentData-> Element Msg
@@ -2888,10 +3055,12 @@ textAlphaAnimator2 =
 
 -- UTILS
 
+safeTail : List a -> List a
+safeTail = Maybe.withDefault [] << L.tail
 
 unlines : List String -> String
 unlines =
-    String.join "\u{000A}"
+    S.join "\u{000A}"
 
 
 getListEntry : Int -> List a -> Maybe a
@@ -2914,9 +3083,9 @@ linSpace min max n =
     let
         delta = (max - min) / (toFloat (n-1))
     in
-        List.map
+        L.map
             ((\idx -> min + delta * idx) << toFloat)
-            <| List.range 0 (n-1)
+            <| L.range 0 (n-1)
 
 
 interpolate : Float -> Float -> Float -> Float
